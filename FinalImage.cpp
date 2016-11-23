@@ -138,7 +138,16 @@ Mat FinalImage::placeRandomly(Patch patch, Mat &img)
 
 }
 
-Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img)
+Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, int backgroundPorcentage) //Chose either background or details texutre
+{
+	int start = rand() % (100);
+	if (start <=backgroundPorcentage)
+		return img;
+	else 
+		return img2;
+}
+
+Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2, int backgroundPorcentage, int detailsPorcentage)
 {
 	Patch newTarget(img); //Temporal target for new rows
 
@@ -146,6 +155,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img)
 	offset = patch.width - overlap; 
 	posYPatch = posYTarget = 0;
 	posXPatch = patch.width - overlap;
+	Mat selectedTexture;
 
     target.image = selectSubset(img, target.width, target.height); //Create a smaller subset of the original image 
     Rect rect(0,0, target.width, target.height);
@@ -158,8 +168,9 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img)
             //Start comparing patches (until error is lower than tolerance)
             for (int i = 0; i < 1000 ; i++) //Compare 3 patches  
             {
+            	selectedTexture = choseTypeTexture(img, img2, backgroundPorcentage);
             	//Set image to the Patch
-                patch.image = selectSubset(img, patch.width, patch.height); //subselection from original texture
+                patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
 
                 //Create ROIs
                 Mat roiOfPatch = patch.image(Rect(0, 0, overlap, patch.height));
