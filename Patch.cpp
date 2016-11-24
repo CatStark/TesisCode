@@ -15,6 +15,7 @@ Patch::Patch(Mat &img)
         height = img.rows / 4;
         width = height; 
     }
+    typeOfTexture = -1;
 }
 
 Patch::Patch()

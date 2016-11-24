@@ -13,12 +13,14 @@ public:
     Mat placeRandomly(Patch, Mat &img);
     Mat textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2, int, int);
     double msqe(Mat &target, Mat &patch);
-    std::pair<double, Mat> getRandomPatch(std::vector<_patches> patchesList);
-    Mat choseTypeTexture( Mat &img, Mat &img2, int backgroundPorcentage);
+    Patch getRandomPatch(std::vector<Patch> patchesList);
+    Mat choseTypeTexture( Mat &img, Mat &img2, int backgroundPorcentage, int gridSize, Patch &p);
+    void addLinearBlending(Mat &target, Mat &patch);
 
 	std::vector<_patches> patchesList;
+    std::vector<Patch> _patchesList;
     _patches tmpPatch;
-    Mat bestPatch;
+    //Mat bestPatch;
     int posYTarget, posYPatch, posXPatch;
     int overlap,offset ;
 
@@ -28,6 +30,8 @@ public:
     double tempError;
     double minError;
     int width, height;
+    int backgroundPorcentageTmp;
+    int gridSize;
 private:
 };
 

@@ -5,7 +5,7 @@ struct findRepeatedPatch
 {
     double error;
     findRepeatedPatch(double error) : error(error) {}
-    bool operator() (const _patches& m) const
+    bool operator() (const Patch& m) const
     {
         return m.error == error;
     }
@@ -17,6 +17,7 @@ FinalImage::FinalImage(Mat &img, int y_expand, int x_expand, int windowSize)
 	newimg = Mat::zeros(img.rows + y_expand  , img.cols + x_expand, CV_64FC3);
 	width = newimg.cols;
     height = newimg.rows;
+    backgroundPorcentageTmp = 0;
 	cout << " ------------Output image created--------------" << endl;
 }
 
@@ -72,17 +73,18 @@ double FinalImage::msqe(Mat &target, Mat &patch)
     return eqm;
 }
 
-std::pair<double, Mat> FinalImage::getRandomPatch(std::vector<_patches> patchesList)
+Patch FinalImage::getRandomPatch(std::vector<Patch> patchesList)
 {
     //return random error from list of best errors
     //If we don't do this, the chosen patches will look extremely similar
-    std::vector<_patches> bestErrorsList;
+	std::vector<Patch> bestErrorsList;
+
     double tempError;
-    Mat bestPatch; 
+    Patch bestPatch; 
     double minError = 50.0; //Chose a value for acceptable error
     
     //Check that each new error stored in PatchesList is in fact new
-    std::vector<_patches>::iterator isRepeatedElem;
+    std::vector<Patch>::iterator isRepeatedElem;
     bool repeatedElem;
     while (bestErrorsList.size() < 50)
     {
@@ -104,13 +106,17 @@ std::pair<double, Mat> FinalImage::getRandomPatch(std::vector<_patches> patchesL
     int i = rand() % (bestErrorsList.size() - 1); //return random error from list of best errors
     if ( bestErrorsList.size() != 0)
     {
-        tempError = bestErrorsList[i].error;
-        bestPatch = bestErrorsList[i].image;  
+        //tempError = bestErrorsList[i].error;
+        //bestPatch = bestErrorsList[i].image; 
+        
+        //bestPatch.error = bestErrorsList[i].error;
+        bestPatch = bestErrorsList[i];
     }
     if (bestErrorsList.size() == 0)
         cout << "WARNING, empty list" << endl; //This should never happen
 
-    return make_pair(tempError, bestPatch);
+    //return make_pair(tempError, bestPatch);
+    return bestPatch;
 }
 
 Mat FinalImage::placeRandomly(Patch patch, Mat &img)
@@ -138,13 +144,44 @@ Mat FinalImage::placeRandomly(Patch patch, Mat &img)
 
 }
 
-Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, int backgroundPorcentage) //Chose either background or details texutre
+Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, int backgroundPorcentage, int gridSize, Patch &p) //Chose either background or details texutre
 {
 	int start = rand() % (100);
-	if (start <=backgroundPorcentage)
-		return img;
-	else 
+	if (start <= backgroundPorcentage && backgroundPorcentageTmp <= gridSize)
+	{
+		backgroundPorcentageTmp += 1;
+		p.typeOfTexture = 1;
+		return img; 
+	}
+	else if (backgroundPorcentageTmp > gridSize)
+	{
+		p.typeOfTexture = 2;
 		return img2;
+	}
+	else
+	{
+		p.typeOfTexture = 1;
+		return img;
+	}
+	
+}
+
+void FinalImage::addLinearBlending(Mat &target, Mat &patch) //LinearBlending
+{
+	double alpha = 0.3; double beta; double input = 0.5;
+	Mat dst;
+
+
+	if( input >= 0.0 && input <= 1.0 ) //Validate correct value for alpha
+		{ alpha = input; }
+
+	beta = ( 1.0 - alpha );
+	addWeighted(target, alpha, patch, beta, 0.0, dst);
+	
+	imshow("dst ", dst);
+	Rect rect2(posXPatch, posYPatch, target.cols, target.rows);
+	dst.copyTo(newimg(rect2));
+
 }
 
 Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2, int backgroundPorcentage, int detailsPorcentage)
@@ -156,6 +193,8 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	posYPatch = posYTarget = 0;
 	posXPatch = patch.width - overlap;
 	Mat selectedTexture;
+	Patch bestP(img);
+	gridSize = (newimg.cols/patch.width) * (newimg.rows/patch.height);
 
     target.image = selectSubset(img, target.width, target.height); //Create a smaller subset of the original image 
     Rect rect(0,0, target.width, target.height);
@@ -166,42 +205,46 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
         for (int patchesInX = 0; patchesInX < newimg.cols/patch.width; patchesInX++)
         {
             //Start comparing patches (until error is lower than tolerance)
-            for (int i = 0; i < 1000 ; i++) //Compare 3 patches  
+            for (int i = 0; i < 100 ; i++) //Compare 3 patches  
             {
-            	selectedTexture = choseTypeTexture(img, img2, backgroundPorcentage);
+            	selectedTexture = choseTypeTexture(img, img2, backgroundPorcentage, gridSize, patch);
             	//Set image to the Patch
                 patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
 
                 //Create ROIs
-                Mat roiOfPatch = patch.image(Rect(0, 0, overlap, patch.height));
-                Mat roiOfTarget = target.image(Rect(offset, 0, overlap, target.height));
+                patch.roiOfPatch = patch.image(Rect(0, 0, overlap, patch.height));
+                patch.roiOfTarget = target.image(Rect(offset, 0, overlap, target.height));
 
-                err = msqe(roiOfTarget, roiOfPatch);
+                err = msqe(patch.roiOfTarget, patch.roiOfPatch);
 
                 if (patchesInY > 0) //if is the second or bigger row
                 {
-                    Mat roiOfTopPatch = patch.image(Rect(0, 0, patch.width, overlap));
-                    Mat roiOfBotTarget = newimg(Rect(posXPatch, posYPatch, patch.width, overlap));
+                    patch.roiOfTopPatch = patch.image(Rect(0, 0, patch.width, overlap));
+                    patch.roiOfBotTarget = newimg(Rect(posXPatch, posYPatch, patch.width, overlap));
 
-                    err += msqe(roiOfTopPatch, roiOfBotTarget);
+                    err += msqe(patch.roiOfTopPatch, patch.roiOfBotTarget);
                     err = err/2; 
                 }
                     
-                tmpPatch.error = err;
-                tmpPatch.image = patch.image;
-                patchesList.push_back(tmpPatch); 
+                patch.error = err;
+                _patchesList.push_back(patch);
                 err = 0;
             }
             //chose random patch from best errors list
-	        bestError = getRandomPatch(patchesList); 
-	        tempError = bestError.first;
-	        bestPatch = bestError.second;
-	        cout << "best patch found " << endl;
+            bestP = getRandomPatch(_patchesList);
+
+	        //tempError = bestError.first;
+	        //bestPatch = bestError.second;
+	        //cout << "best patch found " << endl;
 
 	        Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
-	        bestPatch.copyTo(newimg(rect2));
+	        bestP.image.copyTo(newimg(rect2));
+	        if (bestP.typeOfTexture == 1) //If it's background next to background
+	       		addLinearBlending(patch.roiOfTarget, bestP.roiOfPatch);
+	       	else 
+	       		bestP.image.copyTo(newimg(Rect(posXPatch, posYPatch, patch.width, patch.height)));
 
-	        target.image = bestPatch;
+	        target.image = bestP.image;
             posXPatch += patch.width - overlap;
             patchesList.clear();
 		}
@@ -214,26 +257,26 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
         if (patchesInY < newimg.rows/patch.height)
        {
-            for (int i = 0; i < 1000; i++)
+            for (int i = 0; i < 100; i++)
             {
                 newTarget.image = selectSubset(img, newTarget.width, newTarget.height); //subselection from original texture
                 
                 //Create ROIs
-                Mat roiOfTopPatch = newTarget.image(Rect(0, 0, newTarget.width, overlap));   
+                patch.roiOfTopPatch = newTarget.image(Rect(0, 0, newTarget.width, overlap));   
 
                 //Calculate errors
-                err = msqe(roiOfTopPatch, roiOfBotTarget);
+                err = msqe(patch.roiOfTopPatch, roiOfBotTarget);
 
-                tmpPatch.error = err;
-                tmpPatch.image = newTarget.image;
-                patchesList.push_back(tmpPatch);
+                patch.error = err;
+                _patchesList.push_back(patch);
+
             }
 
             //chose best error
-            bestError = getRandomPatch(patchesList);
-            tempError = bestError.first;
-            bestPatch = bestError.second;
-            newTarget.image = bestPatch;
+            bestP = getRandomPatch(_patchesList);
+           /* tempError = bestError.first;
+            bestPatch = bestError.second;*/
+            newTarget.image = bestP.image;
 
             //newTarget.convertTo(newTarget, CV_64FC3);
             Rect rect2(0, posYPatch, patch.width, patch.height);

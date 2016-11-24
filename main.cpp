@@ -47,10 +47,10 @@ int main( int argc, char** argv ){
     {
         cout << "How much porcentage you want to give to the Background (0 - 100) " << endl;
         //cin >> backgroundPorcentage;
-        backgroundPorcentage = 60; //hardcoded just for debugging 
+        backgroundPorcentage = 70; //hardcoded just for debugging 
         cout << "How much porcentage you want to give to the details ( 0 - 100) " << endl;
         //cin >> detailsPorcentage;
-        detailsPorcentage = 40;
+        detailsPorcentage = 30;
         //TODO verification that background and details sums to 100%
         result = _finalImage.textureSynthesis(_patch, _target, InputImg, InputImg2, backgroundPorcentage, detailsPorcentage);
     }
