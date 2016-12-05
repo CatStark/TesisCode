@@ -15,6 +15,7 @@ struct findRepeatedPatch
 FinalImage::FinalImage(Mat &img, int y_expand, int x_expand, int windowSize)
 {
 	newimg = Mat::zeros(img.rows + y_expand  , img.cols + x_expand, CV_64FC3);
+	newimg.convertTo(newimg, CV_8UC1);
 	width = newimg.cols;
     height = newimg.rows;
     backgroundPorcentageTmp = 0;
@@ -104,18 +105,12 @@ Patch FinalImage::getRandomPatch(std::vector<Patch> patchesList)
 
 
     int i = rand() % (bestErrorsList.size() - 1); //return random error from list of best errors
-    if ( bestErrorsList.size() != 0)
-    {
-        //tempError = bestErrorsList[i].error;
-        //bestPatch = bestErrorsList[i].image; 
-        
-        //bestPatch.error = bestErrorsList[i].error;
+    if ( bestErrorsList.size() != 0) {    
         bestPatch = bestErrorsList[i];
     }
     if (bestErrorsList.size() == 0)
         cout << "WARNING, empty list" << endl; //This should never happen
 
-    //return make_pair(tempError, bestPatch);
     return bestPatch;
 }
 
@@ -166,11 +161,12 @@ Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, int backgroundPorcentage, 
 	
 }
 
-void FinalImage::addLinearBlending(Mat &target, Mat &patch) //LinearBlending
+void FinalImage::addLinearBlending(Mat &target, Mat &patch, int posXPatch, int posYPatch) //LinearBlending
 {
-	double alpha = 0.3; double beta; double input = 0.5;
+	double alpha = 0.8; double beta; double input = 0.5;
 	Mat dst;
-
+	int posX = posXPatch;
+	int posY = posYPatch;
 
 	if( input >= 0.0 && input <= 1.0 ) //Validate correct value for alpha
 		{ alpha = input; }
@@ -178,8 +174,7 @@ void FinalImage::addLinearBlending(Mat &target, Mat &patch) //LinearBlending
 	beta = ( 1.0 - alpha );
 	addWeighted(target, alpha, patch, beta, 0.0, dst);
 	
-	imshow("dst ", dst);
-	Rect rect2(posXPatch, posYPatch, target.cols, target.rows);
+	Rect rect2(posX, posY, target.cols, target.rows);
 	dst.copyTo(newimg(rect2));
 
 }
@@ -187,14 +182,16 @@ void FinalImage::addLinearBlending(Mat &target, Mat &patch) //LinearBlending
 Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2, int backgroundPorcentage, int detailsPorcentage)
 {
 	Patch newTarget(img); //Temporal target for new rows
+	Patch bestP(img);
+
+	Mat selectedTexture;
 
 	overlap = patch.width / 6; 
 	offset = patch.width - overlap; 
 	posYPatch = posYTarget = 0;
 	posXPatch = patch.width - overlap;
-	Mat selectedTexture;
-	Patch bestP(img);
 	gridSize = (newimg.cols/patch.width) * (newimg.rows/patch.height);
+	cout << "grid s " << gridSize << endl;
 
     target.image = selectSubset(img, target.width, target.height); //Create a smaller subset of the original image 
     Rect rect(0,0, target.width, target.height);
@@ -208,6 +205,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
             for (int i = 0; i < 100 ; i++) //Compare 3 patches  
             {
             	selectedTexture = choseTypeTexture(img, img2, backgroundPorcentage, gridSize, patch);
+            	
             	//Set image to the Patch
                 patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
 
@@ -221,38 +219,40 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
                 {
                     patch.roiOfTopPatch = patch.image(Rect(0, 0, patch.width, overlap));
                     patch.roiOfBotTarget = newimg(Rect(posXPatch, posYPatch, patch.width, overlap));
-
+                    
                     err += msqe(patch.roiOfTopPatch, patch.roiOfBotTarget);
                     err = err/2; 
                 }
-                    
+
                 patch.error = err;
                 _patchesList.push_back(patch);
                 err = 0;
             }
+
             //chose random patch from best errors list
             bestP = getRandomPatch(_patchesList);
-
-	        //tempError = bestError.first;
-	        //bestPatch = bestError.second;
-	        //cout << "best patch found " << endl;
+             
 
 	        Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
 	        bestP.image.copyTo(newimg(rect2));
+	        
 	        if (bestP.typeOfTexture == 1) //If it's background next to background
-	       		addLinearBlending(patch.roiOfTarget, bestP.roiOfPatch);
+	        {
+	       		addLinearBlending(patch.roiOfTarget, bestP.roiOfPatch, posXPatch, posYPatch);
+	       		
+	        }
 	       	else 
 	       		bestP.image.copyTo(newimg(Rect(posXPatch, posYPatch, patch.width, patch.height)));
 
 	        target.image = bestP.image;
             posXPatch += patch.width - overlap;
-            patchesList.clear();
+            _patchesList.clear();
 		}
 		posXPatch = patch.width - overlap;
 
 		//New patch of the next row (new first target)
         posYPatch += patch.height - overlap;
-        Mat roiOfBotTarget = newimg(Rect(0, posYPatch , patch.width, overlap));
+        newTarget.roiOfBotTarget = newimg(Rect(0, posYPatch , patch.width, overlap));
 
 
         if (patchesInY < newimg.rows/patch.height)
@@ -262,28 +262,28 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
                 newTarget.image = selectSubset(img, newTarget.width, newTarget.height); //subselection from original texture
                 
                 //Create ROIs
-                patch.roiOfTopPatch = newTarget.image(Rect(0, 0, newTarget.width, overlap));   
+                newTarget.roiOfTopPatch = newTarget.image(Rect(0, 0, newTarget.width, overlap));   
 
                 //Calculate errors
-                err = msqe(patch.roiOfTopPatch, roiOfBotTarget);
+                err = msqe(newTarget.roiOfTopPatch, newTarget.roiOfBotTarget);
 
-                patch.error = err;
-                _patchesList.push_back(patch);
+                newTarget.error = err;
+                _patchesList.push_back(newTarget);
 
             }
 
             //chose best error
             bestP = getRandomPatch(_patchesList);
-           /* tempError = bestError.first;
-            bestPatch = bestError.second;*/
             newTarget.image = bestP.image;
+            imshow("top patch2", bestP.roiOfTopPatch);
 
             //newTarget.convertTo(newTarget, CV_64FC3);
             Rect rect2(0, posYPatch, patch.width, patch.height);
             newTarget.image.copyTo(newimg(rect2));
+            addLinearBlending(newTarget.roiOfTopPatch, newTarget.roiOfBotTarget, 0, posYPatch);
 
             target = newTarget;
-            patchesList.clear();     
+            _patchesList.clear();     
         }  
 	}
 	return newimg;

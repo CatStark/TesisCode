@@ -15,9 +15,9 @@ public:
     double msqe(Mat &target, Mat &patch);
     Patch getRandomPatch(std::vector<Patch> patchesList);
     Mat choseTypeTexture( Mat &img, Mat &img2, int backgroundPorcentage, int gridSize, Patch &p);
-    void addLinearBlending(Mat &target, Mat &patch);
+    void addLinearBlending(Mat &target, Mat &patch, int posXPatch, int posYPatch);
 
-	std::vector<_patches> patchesList;
+	//std::vector<_patches> patchesList;
     std::vector<Patch> _patchesList;
     _patches tmpPatch;
     //Mat bestPatch;
