@@ -128,7 +128,6 @@ Mat FinalImage::placeRandomly(Patch patch, Mat &img)
             patch.image = selectSubset(img, patch.width, patch.height); //subselection from original texture
             Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
             patch.image.copyTo(newimg(rect2));
-            imshow("p image ", patch.image);
             posXPatch += patch.width;
         }
         posXPatch = 0;
@@ -141,7 +140,20 @@ Mat FinalImage::placeRandomly(Patch patch, Mat &img)
 
 Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, int backgroundPorcentage, int gridSize, Patch &p) //Chose either background or details texutre
 {
-	int start = rand() % (100);
+	double start = (rand() % 32768) / 32768.0;
+	cout << "s " << start << endl;
+	if (start < 0.5){
+		p.typeOfTexture = 1;
+		return img;
+	}
+	else{
+		p.typeOfTexture = 2;
+		return img2;
+	}
+
+
+
+	/*
 	if (start <= backgroundPorcentage && backgroundPorcentageTmp <= gridSize)
 	{
 		backgroundPorcentageTmp += 1;
@@ -157,7 +169,7 @@ Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, int backgroundPorcentage, 
 	{
 		p.typeOfTexture = 1;
 		return img;
-	}
+	}*/
 	
 }
 
@@ -173,7 +185,7 @@ void FinalImage::addLinearBlending(Mat &target, Mat &patch, int posXPatch, int p
 
 	beta = ( 1.0 - alpha );
 	addWeighted(target, alpha, patch, beta, 0.0, dst);
-	
+
 	Rect rect2(posX, posY, target.cols, target.rows);
 	dst.copyTo(newimg(rect2));
 
@@ -238,11 +250,16 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	        
 	        if (bestP.typeOfTexture == 1) //If it's background next to background
 	        {
-	       		addLinearBlending(patch.roiOfTarget, bestP.roiOfPatch, posXPatch, posYPatch);
+	       		addLinearBlending(bestP.roiOfTarget, bestP.roiOfPatch, posXPatch, posYPatch);
+	       		if (patchesInY > 0){
+	       			addLinearBlending(bestP.roiOfBotTarget, bestP.roiOfTopPatch, posXPatch, posYPatch);
+	       			//cout << "size " << bestP.roiOfTopPatch << endl;
+	       			imshow("top", bestP.roiOfTopPatch);
+	       		}
 	       		
 	        }
-	       	else 
-	       		bestP.image.copyTo(newimg(Rect(posXPatch, posYPatch, patch.width, patch.height)));
+	       //	else 
+	       	//	bestP.image.copyTo(newimg(Rect(posXPatch, posYPatch, patch.width, patch.height)));
 
 	        target.image = bestP.image;
             posXPatch += patch.width - overlap;
@@ -275,7 +292,6 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
             //chose best error
             bestP = getRandomPatch(_patchesList);
             newTarget.image = bestP.image;
-            imshow("top patch2", bestP.roiOfTopPatch);
 
             //newTarget.convertTo(newTarget, CV_64FC3);
             Rect rect2(0, posYPatch, patch.width, patch.height);
