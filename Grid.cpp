@@ -13,7 +13,7 @@ void Grid::fill()
 			grid[i][j] = start;
 			cout << "[" <</*<< i << "][" << j << "]:" << */grid[i][j] << "]";
 		}
-		cout << endl;
+		//cout << endl;
 	}
 
 	mapGeneration();
