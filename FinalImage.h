@@ -3,7 +3,7 @@
 #ifndef FinalImage_H
 #define FinalImage_H
 
-#include "Patch.h"
+#include "Grid.h"
 
 class FinalImage
 {
@@ -17,10 +17,8 @@ public:
     Mat choseTypeTexture( Mat &img, Mat &img2, int backgroundPorcentage, int gridSize, Patch &p);
     void addLinearBlending(Mat &target, Mat &patch, int posXPatch, int posYPatch);
 
-	//std::vector<_patches> patchesList;
     std::vector<Patch> _patchesList;
     _patches tmpPatch;
-    //Mat bestPatch;
     int posYTarget, posYPatch, posXPatch;
     int overlap,offset ;
 
@@ -31,7 +29,7 @@ public:
     double minError;
     int width, height;
     int backgroundPorcentageTmp;
-    int gridSize;
+    int gridSize, gridX, gridY;
 private:
 };
 

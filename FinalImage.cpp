@@ -1,5 +1,5 @@
 #include "FinalImage.h"
-#include <iostream>
+
 
 struct findRepeatedPatch
 {
@@ -141,7 +141,6 @@ Mat FinalImage::placeRandomly(Patch patch, Mat &img)
 Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, int backgroundPorcentage, int gridSize, Patch &p) //Chose either background or details texutre
 {
 	double start = (rand() % 32768) / 32768.0;
-	cout << "s " << start << endl;
 	if (start < 0.5){
 		p.typeOfTexture = 1;
 		return img;
@@ -150,26 +149,6 @@ Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, int backgroundPorcentage, 
 		p.typeOfTexture = 2;
 		return img2;
 	}
-
-
-
-	/*
-	if (start <= backgroundPorcentage && backgroundPorcentageTmp <= gridSize)
-	{
-		backgroundPorcentageTmp += 1;
-		p.typeOfTexture = 1;
-		return img; 
-	}
-	else if (backgroundPorcentageTmp > gridSize)
-	{
-		p.typeOfTexture = 2;
-		return img2;
-	}
-	else
-	{
-		p.typeOfTexture = 1;
-		return img;
-	}*/
 	
 }
 
@@ -203,15 +182,21 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	posYPatch = posYTarget = 0;
 	posXPatch = patch.width - overlap;
 	gridSize = (newimg.cols/patch.width) * (newimg.rows/patch.height);
-	cout << "grid s " << gridSize << endl;
+
+	//Size of grid
+	gridX = width / patch.width;
+	gridY = height / patch.height;
+	Grid grid(gridX, gridY); //Create grid
+	grid.fill();
+
 
     target.image = selectSubset(img, target.width, target.height); //Create a smaller subset of the original image 
     Rect rect(0,0, target.width, target.height);
     target.image.copyTo(newimg(rect));
     
-	for (int patchesInY = 0; patchesInY <= newimg.rows/patch.height; patchesInY++)
+	for (int patchesInY = 0; patchesInY <= gridY; patchesInY++)
    {
-        for (int patchesInX = 0; patchesInX < newimg.cols/patch.width; patchesInX++)
+        for (int patchesInX = 0; patchesInX < gridX; patchesInX++)
         {
             //Start comparing patches (until error is lower than tolerance)
             for (int i = 0; i < 100 ; i++) //Compare 3 patches  
@@ -253,7 +238,6 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	       		addLinearBlending(bestP.roiOfTarget, bestP.roiOfPatch, posXPatch, posYPatch);
 	       		if (patchesInY > 0){
 	       			addLinearBlending(bestP.roiOfBotTarget, bestP.roiOfTopPatch, posXPatch, posYPatch);
-	       			//cout << "size " << bestP.roiOfTopPatch << endl;
 	       			imshow("top", bestP.roiOfTopPatch);
 	       		}
 	       		
