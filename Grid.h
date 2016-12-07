@@ -9,7 +9,7 @@ class Grid
 {
 public:
     Grid(int x , int y); //Constructor
-    std::vector< vector<int> > grid;
+    vector< vector<int> > grid;
     void fill();
     void mapGeneration();
 

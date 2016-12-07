@@ -14,7 +14,7 @@ public:
     Mat textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2, int, int);
     double msqe(Mat &target, Mat &patch);
     Patch getRandomPatch(std::vector<Patch> patchesList);
-    Mat choseTypeTexture( Mat &img, Mat &img2, int backgroundPorcentage, int gridSize, Patch &p);
+    Mat choseTypeTexture( Mat &img, Mat &img2, Patch &p, Grid &g, int, int);
     void addLinearBlending(Mat &target, Mat &patch, int posXPatch, int posYPatch);
 
     std::vector<Patch> _patchesList;

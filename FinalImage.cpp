@@ -138,10 +138,9 @@ Mat FinalImage::placeRandomly(Patch patch, Mat &img)
 
 }
 
-Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, int backgroundPorcentage, int gridSize, Patch &p) //Chose either background or details texutre
+Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, Patch &p, Grid &g, int x, int y) //Chose either background or details texutre
 {
-	double start = (rand() % 32768) / 32768.0;
-	if (start < 0.5){
+	if (g.grid[x][y] == 0){
 		p.typeOfTexture = 1;
 		return img;
 	}
@@ -186,6 +185,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	//Size of grid
 	gridX = width / patch.width;
 	gridY = height / patch.height;
+	cout << "gx " << gridX << " gy " << gridY << endl;
 	Grid grid(gridX, gridY); //Create grid
 	grid.fill();
 
@@ -194,14 +194,14 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
     Rect rect(0,0, target.width, target.height);
     target.image.copyTo(newimg(rect));
     
-	for (int patchesInY = 0; patchesInY <= gridY; patchesInY++)
+	for (int patchesInY = 0; patchesInY <= grid.grid[1].size(); patchesInY++)
    {
-        for (int patchesInX = 0; patchesInX < gridX; patchesInX++)
+        for (int patchesInX = 0; patchesInX < grid.grid.size(); patchesInX++)
         {
             //Start comparing patches (until error is lower than tolerance)
             for (int i = 0; i < 100 ; i++) //Compare 3 patches  
             {
-            	selectedTexture = choseTypeTexture(img, img2, backgroundPorcentage, gridSize, patch);
+            	selectedTexture = choseTypeTexture(img, img2, patch, grid, patchesInX, patchesInY);
             	
             	//Set image to the Patch
                 patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
