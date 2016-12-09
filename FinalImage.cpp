@@ -153,7 +153,7 @@ Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, Patch &p, Grid &g, int x, 
 
 void FinalImage::addLinearBlending(Mat &target, Mat &patch, int posXPatch, int posYPatch) //LinearBlending
 {
-	double alpha = 0.8; double beta; double input = 0.5;
+	double alpha = 0.6; double beta; double input = 0.5;
 	Mat dst;
 	int posX = posXPatch;
 	int posY = posYPatch;
@@ -176,33 +176,32 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 	Mat selectedTexture;
 
-	overlap = patch.width / 6; 
+	overlap = patch.width / 8; 
 	offset = patch.width - overlap; 
 	posYPatch = posYTarget = 0;
 	posXPatch = patch.width - overlap;
 	gridSize = (newimg.cols/patch.width) * (newimg.rows/patch.height);
 
 	//Size of grid
-	gridX = width / patch.width;
-	gridY = height / patch.height;
-	cout << "gx " << gridX << " gy " << gridY << endl;
+	gridX = (width / patch.width) + 1; //plus one because with the overlaping of patches, there is space for one more
+	gridY = (height / patch.height) + 1;
 	Grid grid(gridX, gridY); //Create grid
-	grid.fill();
+	grid.fill(); 
+	poisson _poi;
 
-
-    target.image = selectSubset(img, target.width, target.height); //Create a smaller subset of the original image 
+	selectedTexture = choseTypeTexture(img, img2, patch, grid, 0,0); //create target
+    target.image = selectSubset(selectedTexture, target.width, target.height); //Create a smaller subset of the original image 
     Rect rect(0,0, target.width, target.height);
     target.image.copyTo(newimg(rect));
     
-	for (int patchesInY = 0; patchesInY <= grid.grid[1].size(); patchesInY++)
+	for (int patchesInY = 0; patchesInY < grid.grid[1].size(); patchesInY++)
    {
-        for (int patchesInX = 0; patchesInX < grid.grid.size(); patchesInX++)
+        for (int patchesInX = 1; patchesInX < grid.grid.size(); patchesInX++)
         {
             //Start comparing patches (until error is lower than tolerance)
-            for (int i = 0; i < 100 ; i++) //Compare 3 patches  
+            selectedTexture = choseTypeTexture(img, img2, patch, grid, patchesInX, patchesInY);
+            for (int i = 0; i < 10 ; i++) 
             {
-            	selectedTexture = choseTypeTexture(img, img2, patch, grid, patchesInX, patchesInY);
-            	
             	//Set image to the Patch
                 patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
 
@@ -215,7 +214,10 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
                 if (patchesInY > 0) //if is the second or bigger row
                 {
                     patch.roiOfTopPatch = patch.image(Rect(0, 0, patch.width, overlap));
-                    patch.roiOfBotTarget = newimg(Rect(posXPatch, posYPatch, patch.width, overlap));
+                    patch.roiOfBotTarget = newimg(Rect(posXPatch, posYPatch - overlap, patch.width, overlap));
+                   
+                    /*imshow("bot t", patch.roiOfBotTarget);
+	       			imshow("top p", patch.roiOfTopPatch);*/
                     
                     err += msqe(patch.roiOfTopPatch, patch.roiOfBotTarget);
                     err = err/2; 
@@ -229,21 +231,50 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
             //chose random patch from best errors list
             bestP = getRandomPatch(_patchesList);
              
-
 	        Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
 	        bestP.image.copyTo(newimg(rect2));
-	        
-	        if (bestP.typeOfTexture == 1) //If it's background next to background
+	        Mat tmp = newimg(Rect(posXPatch, posYPatch, patch.width, patch.height));
+      
+	        if (patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX-1][patchesInY])
 	        {
+	        	cout << "same type " << endl;
 	       		addLinearBlending(bestP.roiOfTarget, bestP.roiOfPatch, posXPatch, posYPatch);
-	       		if (patchesInY > 0){
-	       			addLinearBlending(bestP.roiOfBotTarget, bestP.roiOfTopPatch, posXPatch, posYPatch);
-	       			imshow("top", bestP.roiOfTopPatch);
-	       		}
 	       		
+	       		if ( patchesInY - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX][patchesInY-1]) {
+	       			addLinearBlending(bestP.roiOfBotTarget, tmp, posXPatch, posYPatch-overlap);
+	       		}	
 	        }
-	       //	else 
-	       	//	bestP.image.copyTo(newimg(Rect(posXPatch, posYPatch, patch.width, patch.height)));
+	       	else{
+	       		cout << "different type " << endl;
+
+	       		// Create an all white mask
+				/*Mat src_mask = 255 * Mat::ones(bestP.image.rows, bestP.image.cols, bestP.image.depth());
+				Mat dst = bestP.roiOfTarget;
+
+				// The location of the center of the src in the dst
+				Point center(bestP.image.cols/2,bestP.image.rows/2);
+
+				// Seamlessly clone src into dst and put the results in output
+				Mat normal_clone;
+				Mat mixed_clone;
+				     
+				seamlessClone(bestP.image, dst, src_mask, center, normal_clone, NORMAL_CLONE);
+				seamlessClone(bestP, dst, src_mask, center, mixed_clone, MIXED_CLONE);
+				     
+				// Save results
+				imwrite("images/opencv-normal-clone-example.jpg", normal_clone);
+				imwrite("images/opencv-mixed-clone-example.jpg", mixed_clone);*/
+
+	       		/*Rect rec(0, 0, bestP.roiOfPatch.cols, bestP.roiOfPatch.rows);
+	       		bestP.roiOfTarget.convertTo(bestP.roiOfTarget, CV_64FC3);
+	       		bestP.roiOfPatch.convertTo(bestP.roiOfPatch, CV_64FC3);
+	       		Mat result = _poi.poisson_blending(bestP.image, bestP.roiOfPatch, rec, posXPatch, posYPatch );
+	       		bestP.image.convertTo(bestP.image, CV_8UC1);
+	       		bestP.roiOfPatch.convertTo(bestP.roiOfPatch, CV_8UC1);
+
+	       		result.copyTo(newimg(Rect(posXPatch, posYPatch, bestP.roiOfPatch.cols, bestP.roiOfPatch.rows)));*/
+	       	} 
+	       	
 
 	        target.image = bestP.image;
             posXPatch += patch.width - overlap;
@@ -255,12 +286,12 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
         posYPatch += patch.height - overlap;
         newTarget.roiOfBotTarget = newimg(Rect(0, posYPatch , patch.width, overlap));
 
-
         if (patchesInY < newimg.rows/patch.height)
        {
             for (int i = 0; i < 100; i++)
             {
-                newTarget.image = selectSubset(img, newTarget.width, newTarget.height); //subselection from original texture
+            	selectedTexture = choseTypeTexture(img, img2, patch, grid, 0, patchesInY+1);
+                newTarget.image = selectSubset(selectedTexture, newTarget.width, newTarget.height); //subselection from original texture
                 
                 //Create ROIs
                 newTarget.roiOfTopPatch = newTarget.image(Rect(0, 0, newTarget.width, overlap));   
@@ -273,6 +304,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
             }
 
+
             //chose best error
             bestP = getRandomPatch(_patchesList);
             newTarget.image = bestP.image;
@@ -280,7 +312,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
             //newTarget.convertTo(newTarget, CV_64FC3);
             Rect rect2(0, posYPatch, patch.width, patch.height);
             newTarget.image.copyTo(newimg(rect2));
-            addLinearBlending(newTarget.roiOfTopPatch, newTarget.roiOfBotTarget, 0, posYPatch);
+            addLinearBlending(newTarget.roiOfBotTarget, newTarget.roiOfTopPatch, 0, posYPatch);
 
             target = newTarget;
             _patchesList.clear();     
