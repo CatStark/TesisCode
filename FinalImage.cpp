@@ -187,7 +187,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	gridY = (height / patch.height) + 1;
 	Grid grid(gridX, gridY); //Create grid
 	grid.fill(); 
-	poisson _poi;
+	//poisson _poi;
 
 	selectedTexture = choseTypeTexture(img, img2, patch, grid, 0,0); //create target
     target.image = selectSubset(selectedTexture, target.width, target.height); //Create a smaller subset of the original image 
@@ -200,7 +200,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
         {
             //Start comparing patches (until error is lower than tolerance)
             selectedTexture = choseTypeTexture(img, img2, patch, grid, patchesInX, patchesInY);
-            for (int i = 0; i < 10 ; i++) 
+            for (int i = 0; i < 100 ; i++) //This alue needs to be at least 50
             {
             	//Set image to the Patch
                 patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
@@ -230,6 +230,8 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
             //chose random patch from best errors list
             bestP = getRandomPatch(_patchesList);
+
+
              
 	        Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
 	        bestP.image.copyTo(newimg(rect2));
@@ -241,7 +243,8 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	       		addLinearBlending(bestP.roiOfTarget, bestP.roiOfPatch, posXPatch, posYPatch);
 	       		
 	       		if ( patchesInY - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX][patchesInY-1]) {
-	       			addLinearBlending(bestP.roiOfBotTarget, tmp, posXPatch, posYPatch-overlap);
+	       			cout << "same type 2" << endl;
+	       			addLinearBlending(bestP.roiOfBotTarget, bestP.roiOfTopPatch, posXPatch, posYPatch-overlap);
 	       		}	
 	        }
 	       	else{
@@ -303,7 +306,6 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
                 _patchesList.push_back(newTarget);
 
             }
-
 
             //chose best error
             bestP = getRandomPatch(_patchesList);
