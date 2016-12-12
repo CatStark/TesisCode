@@ -251,7 +251,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	       		cout << "different type " << endl;
 
 	       		// Create an all white mask
-				/*Mat src_mask = 255 * Mat::ones(bestP.image.rows, bestP.image.cols, bestP.image.depth());
+				Mat src_mask = 255 * Mat::ones(bestP.image.rows, bestP.image.cols, bestP.image.depth());
 				Mat dst = bestP.roiOfTarget;
 
 				// The location of the center of the src in the dst
@@ -266,7 +266,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 				     
 				// Save results
 				imwrite("images/opencv-normal-clone-example.jpg", normal_clone);
-				imwrite("images/opencv-mixed-clone-example.jpg", mixed_clone);*/
+				imwrite("images/opencv-mixed-clone-example.jpg", mixed_clone);
 
 	       		/*Rect rec(0, 0, bestP.roiOfPatch.cols, bestP.roiOfPatch.rows);
 	       		bestP.roiOfTarget.convertTo(bestP.roiOfTarget, CV_64FC3);
