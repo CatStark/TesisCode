@@ -249,67 +249,12 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	       	else{*/
 	       		cout << "different type " << endl;
 
-	       		/*
-	       		Mat src = bestP.roiOfTarget;
-				Mat dst = bestP.image;
-
-				// Create an all white mask
-	       		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
-
-	       		// The location of the center of the src in the dst
-				Point center((src.cols/2), patch.height/2);
-
-				// Seamlessly clone src into dst and put the results in output
-				Mat normal_clone;
-				Mat mixed_clone;
-
-				seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
-				seamlessClone(src, dst, src_mask, center, mixed_clone, MIXED_CLONE);
-
-				imshow("dst", bestP.image);
-				imshow("src", target.image);
-				imshow("normal_clone", normal_clone);
-				imshow("mixed_clone", mixed_clone);
-
-				mixed_clone.copyTo(newimg(Rect(posXPatch, posYPatch, bestP.image.cols, bestP.image.rows)));
-				*/
-
-				/**
-				Mat src = bestP.image;
-				Mat dst = newimg;
-				Mat _newimg;
-
-				// Create an all white mask
-	       		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
-
-	       		// The location of the center of the src in the dst
-				Point center(posXPatch + patch.width/3 , posYPatch + (patch.height/2));
-
-				// Seamlessly clone src into dst and put the results in output
-				Mat normal_clone;
-				Mat mixed_clone;
-
-				seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
-				//seamlessClone(src, dst, src_mask, center, mixed_clone, MIXED_CLONE);
-				//circle( normal_clone, center, 5.0, Scalar( 0, 50, 255 ), 1, 8 );
-				//rectangle(normal_clone, Point(posXPatch, posYPatch ), Point( posXPatch + patch.width, posYPatch + patch.height), Scalar( 0, 55, 255 ), +1, 4 );
-
-				//imshow("dst", bestP.image);
-				//imshow("src", target.image);
-				//imshow("normal_clone", normal_clone);
-				//imshow("mixed_clone", mixed_clone);
-
-				_newimg = normal_clone(Rect(0, 0, posXPatch + patch.width, posYPatch + patch.height));
-				//imshow("_newimg", _newimg);
-
-				_newimg.copyTo(newimg(Rect(0, 0, _newimg.cols, _newimg.rows)));*/
-
 				Mat src = bestP.image;
 				Mat dst;
 				Mat _newimg;
 
 				dst = newimg(Rect(0, 0, posXPatch + patch.width, posYPatch + patch.height));
-				imshow("dst", dst);
+				//imshow("dst", dst);
 				
 				// Create an all white mask
 	       		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
@@ -323,6 +268,12 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 				seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
 				normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
+
+				if ( patchesInY - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX][patchesInY-1]) {
+	       			
+					//TODO
+					//Same for patches in X
+	       		}	
 
 	       //	} 
 	       	
@@ -339,7 +290,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
         if (patchesInY < newimg.rows/patch.height)
        {
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 1000; i++)
             {
             	selectedTexture = choseTypeTexture(img, img2, patch, grid, 0, patchesInY+1);
                 newTarget.image = selectSubset(selectedTexture, newTarget.width, newTarget.height); //subselection from original texture
@@ -359,10 +310,24 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
             bestP = getRandomPatch(_patchesList);
             newTarget.image = bestP.image;
 
-            //newTarget.convertTo(newTarget, CV_64FC3);
-            Rect rect2(0, posYPatch, patch.width, patch.height);
-            newTarget.image.copyTo(newimg(rect2));
-            addLinearBlending(newTarget.roiOfBotTarget, newTarget.roiOfTopPatch, 0, posYPatch);
+            Mat src = bestP.image;
+			Mat dst;
+
+			dst = newimg(Rect(0, 0, patch.width, posYPatch + patch.height));
+			imshow("dst", dst);
+			
+			// Create an all white mask
+       		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
+
+       		// The location of the center of the src in the dst
+			Point center(patch.width/2 , posYPatch + (patch.height/2));
+
+			// Seamlessly clone src into dst and put the results in output
+			Mat normal_clone;
+
+			seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
+			//imshow("nor", normal_clone);
+			normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
 
             target = newTarget;
             _patchesList.clear();     
