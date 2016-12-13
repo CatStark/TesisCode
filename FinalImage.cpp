@@ -194,9 +194,9 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
     Rect rect(0,0, target.width, target.height);
     target.image.copyTo(newimg(rect));
     
-	for (int patchesInY = 0; patchesInY < grid.grid[1].size(); patchesInY++)
+	for (int patchesInY = 0; patchesInY < /*grid.grid[1].size()*/1; patchesInY++)
    {
-        for (int patchesInX = 1; patchesInX < grid.grid.size(); patchesInX++)
+        for (int patchesInX = 1; patchesInX < /*grid.grid.size()*/2; patchesInX++)
         {
             //Start comparing patches (until error is lower than tolerance)
             selectedTexture = choseTypeTexture(img, img2, patch, grid, patchesInX, patchesInY);
@@ -237,7 +237,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	        bestP.image.copyTo(newimg(rect2));
 	        Mat tmp = newimg(Rect(posXPatch, posYPatch, patch.width, patch.height));
       
-	        if (patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX-1][patchesInY])
+	      /*  if (patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX-1][patchesInY])
 	        {
 	        	cout << "same type " << endl;
 	       		addLinearBlending(bestP.roiOfTarget, bestP.roiOfPatch, posXPatch, posYPatch);
@@ -247,36 +247,37 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	       			addLinearBlending(bestP.roiOfBotTarget, bestP.roiOfTopPatch, posXPatch, posYPatch-overlap);
 	       		}	
 	        }
-	       	else{
+	       	else{*/
 	       		cout << "different type " << endl;
 
 	       		// Create an all white mask
-				Mat src_mask = 255 * Mat::ones(bestP.image.rows, bestP.image.cols, bestP.image.depth());
-				Mat dst = bestP.roiOfTarget;
+				//Mat src_mask = 255 * Mat::ones(bestP.roiOfPatch.rows, bestP.roiOfPatch.cols, bestP.roiOfPatch.depth());
+	       		Mat src_mask = 255 * Mat::ones(bestP.roiOfTarget.rows, bestP.roiOfTarget.cols, bestP.roiOfTarget.depth());
+				Mat src = bestP.roiOfTarget;
+				Mat dst = bestP.image;
 
 				// The location of the center of the src in the dst
-				Point center(bestP.image.cols/2,bestP.image.rows/2);
+				//Point center(bestP.roiOfTarget.cols/2, bestP.roiOfTarget.rows/2);
+				Point center(overlap/2, patch.height/2);
 
 				// Seamlessly clone src into dst and put the results in output
 				Mat normal_clone;
 				Mat mixed_clone;
 				     
-				seamlessClone(bestP.image, dst, src_mask, center, normal_clone, NORMAL_CLONE);
-				seamlessClone(bestP, dst, src_mask, center, mixed_clone, MIXED_CLONE);
+			    //seamlessClone(src, dst, src_mask, center, normal_clone, 1);
+				seamlessClone(src, dst, src_mask, center, mixed_clone, 2);
 				     
 				// Save results
-				imwrite("images/opencv-normal-clone-example.jpg", normal_clone);
-				imwrite("images/opencv-mixed-clone-example.jpg", mixed_clone);
+				
+				imshow("dst", bestP.image);
+				imshow("src", target.image);
+				imshow("new", mixed_clone);
+				//imwrite("images/opencv-mixed-clone-example.jpg", mixed_clone);
 
-	       		/*Rect rec(0, 0, bestP.roiOfPatch.cols, bestP.roiOfPatch.rows);
-	       		bestP.roiOfTarget.convertTo(bestP.roiOfTarget, CV_64FC3);
-	       		bestP.roiOfPatch.convertTo(bestP.roiOfPatch, CV_64FC3);
-	       		Mat result = _poi.poisson_blending(bestP.image, bestP.roiOfPatch, rec, posXPatch, posYPatch );
-	       		bestP.image.convertTo(bestP.image, CV_8UC1);
-	       		bestP.roiOfPatch.convertTo(bestP.roiOfPatch, CV_8UC1);
+	       		//Rect rec(0, 0, bestP.roiOfPatch.cols, bestP.roiOfPatch.rows);
 
-	       		result.copyTo(newimg(Rect(posXPatch, posYPatch, bestP.roiOfPatch.cols, bestP.roiOfPatch.rows)));*/
-	       	} 
+	       		mixed_clone.copyTo(newimg(Rect(posXPatch, posYPatch, bestP.image.cols, bestP.image.rows)));
+	       //	} 
 	       	
 
 	        target.image = bestP.image;

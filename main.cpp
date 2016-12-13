@@ -25,7 +25,7 @@ int main( int argc, char** argv ){
     InputImg2 = imread("flowers.jpg");
     int backgroundPorcentage, detailsPorcentage = 0;
 
-    imshow("original ", InputImg);
+   // imshow("original ", InputImg);
 
     //Create first patch from img
     Patch _patch(InputImg); 
