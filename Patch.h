@@ -27,7 +27,7 @@ public:
 	Patch();
 	int width, height;
 	Mat image; //new image on the patch
-	Mat roiOfPatch, roiOfTarget, roiOfTopPatch, roiOfBotTarget;
+	Mat roiOfPatch, roiOfTarget, roiOfTopPatch, roiOfBotTarget, halfOfTarget;
 	double error; 
 	int typeOfTexture; //Type of texture; 1) background or 2) detail
 	

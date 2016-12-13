@@ -176,7 +176,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 	Mat selectedTexture;
 
-	overlap = patch.width / 8; 
+	overlap = patch.width / 6; 
 	offset = patch.width - overlap; 
 	posYPatch = posYTarget = 0;
 	posXPatch = patch.width - overlap;
@@ -194,13 +194,13 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
     Rect rect(0,0, target.width, target.height);
     target.image.copyTo(newimg(rect));
     
-	for (int patchesInY = 0; patchesInY < /*grid.grid[1].size()*/1; patchesInY++)
+	for (int patchesInY = 0; patchesInY < grid.grid[1].size(); patchesInY++)
    {
-        for (int patchesInX = 1; patchesInX < /*grid.grid.size()*/2; patchesInX++)
+        for (int patchesInX = 1; patchesInX < grid.grid.size(); patchesInX++)
         {
             //Start comparing patches (until error is lower than tolerance)
             selectedTexture = choseTypeTexture(img, img2, patch, grid, patchesInX, patchesInY);
-            for (int i = 0; i < 100 ; i++) //This alue needs to be at least 50
+            for (int i = 0; i < 1000 ; i++) //This alue needs to be at least 50
             {
             	//Set image to the Patch
                 patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
@@ -208,6 +208,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
                 //Create ROIs
                 patch.roiOfPatch = patch.image(Rect(0, 0, overlap, patch.height));
                 patch.roiOfTarget = target.image(Rect(offset, 0, overlap, target.height));
+                patch.halfOfTarget = target.image(Rect(target.width/4, 0, target.width-(target.width/4), target.height));
 
                 err = msqe(patch.roiOfTarget, patch.roiOfPatch);
 
@@ -230,14 +231,12 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
             //chose random patch from best errors list
             bestP = getRandomPatch(_patchesList);
-
-
              
 	        Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
 	        bestP.image.copyTo(newimg(rect2));
 	        Mat tmp = newimg(Rect(posXPatch, posYPatch, patch.width, patch.height));
       
-	      /*  if (patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX-1][patchesInY])
+	       /* if (patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX-1][patchesInY])
 	        {
 	        	cout << "same type " << endl;
 	       		addLinearBlending(bestP.roiOfTarget, bestP.roiOfPatch, posXPatch, posYPatch);
@@ -250,33 +249,81 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	       	else{*/
 	       		cout << "different type " << endl;
 
-	       		// Create an all white mask
-				//Mat src_mask = 255 * Mat::ones(bestP.roiOfPatch.rows, bestP.roiOfPatch.cols, bestP.roiOfPatch.depth());
-	       		Mat src_mask = 255 * Mat::ones(bestP.roiOfTarget.rows, bestP.roiOfTarget.cols, bestP.roiOfTarget.depth());
-				Mat src = bestP.roiOfTarget;
+	       		/*
+	       		Mat src = bestP.roiOfTarget;
 				Mat dst = bestP.image;
 
-				// The location of the center of the src in the dst
-				//Point center(bestP.roiOfTarget.cols/2, bestP.roiOfTarget.rows/2);
-				Point center(overlap/2, patch.height/2);
+				// Create an all white mask
+	       		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
+
+	       		// The location of the center of the src in the dst
+				Point center((src.cols/2), patch.height/2);
 
 				// Seamlessly clone src into dst and put the results in output
 				Mat normal_clone;
 				Mat mixed_clone;
-				     
-			    //seamlessClone(src, dst, src_mask, center, normal_clone, 1);
-				seamlessClone(src, dst, src_mask, center, mixed_clone, 2);
-				     
-				// Save results
-				
+
+				seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
+				seamlessClone(src, dst, src_mask, center, mixed_clone, MIXED_CLONE);
+
 				imshow("dst", bestP.image);
 				imshow("src", target.image);
-				imshow("new", mixed_clone);
-				//imwrite("images/opencv-mixed-clone-example.jpg", mixed_clone);
+				imshow("normal_clone", normal_clone);
+				imshow("mixed_clone", mixed_clone);
 
-	       		//Rect rec(0, 0, bestP.roiOfPatch.cols, bestP.roiOfPatch.rows);
+				mixed_clone.copyTo(newimg(Rect(posXPatch, posYPatch, bestP.image.cols, bestP.image.rows)));
+				*/
 
-	       		mixed_clone.copyTo(newimg(Rect(posXPatch, posYPatch, bestP.image.cols, bestP.image.rows)));
+				/**
+				Mat src = bestP.image;
+				Mat dst = newimg;
+				Mat _newimg;
+
+				// Create an all white mask
+	       		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
+
+	       		// The location of the center of the src in the dst
+				Point center(posXPatch + patch.width/3 , posYPatch + (patch.height/2));
+
+				// Seamlessly clone src into dst and put the results in output
+				Mat normal_clone;
+				Mat mixed_clone;
+
+				seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
+				//seamlessClone(src, dst, src_mask, center, mixed_clone, MIXED_CLONE);
+				//circle( normal_clone, center, 5.0, Scalar( 0, 50, 255 ), 1, 8 );
+				//rectangle(normal_clone, Point(posXPatch, posYPatch ), Point( posXPatch + patch.width, posYPatch + patch.height), Scalar( 0, 55, 255 ), +1, 4 );
+
+				//imshow("dst", bestP.image);
+				//imshow("src", target.image);
+				//imshow("normal_clone", normal_clone);
+				//imshow("mixed_clone", mixed_clone);
+
+				_newimg = normal_clone(Rect(0, 0, posXPatch + patch.width, posYPatch + patch.height));
+				//imshow("_newimg", _newimg);
+
+				_newimg.copyTo(newimg(Rect(0, 0, _newimg.cols, _newimg.rows)));*/
+
+				Mat src = bestP.image;
+				Mat dst;
+				Mat _newimg;
+
+				dst = newimg(Rect(0, 0, posXPatch + patch.width, posYPatch + patch.height));
+				imshow("dst", dst);
+				
+				// Create an all white mask
+	       		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
+
+	       		// The location of the center of the src in the dst
+				Point center(posXPatch + patch.width/3 , posYPatch + (patch.height/2));
+
+				// Seamlessly clone src into dst and put the results in output
+				Mat normal_clone;
+				Mat mixed_clone;
+
+				seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
+				normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
+
 	       //	} 
 	       	
 
