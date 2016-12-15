@@ -194,9 +194,9 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
     Rect rect(0,0, target.width, target.height);
     target.image.copyTo(newimg(rect));
     
-	for (int patchesInY = 0; patchesInY < grid.grid[1].size(); patchesInY++)
+	for (int patchesInY = 0; patchesInY < /*grid.grid[1].size()*/2; patchesInY++)
    {
-        for (int patchesInX = 1; patchesInX < grid.grid.size(); patchesInX++)
+        for (int patchesInX = 1; patchesInX < /*grid.grid.size()*/2; patchesInX++)
         {
             //Start comparing patches (until error is lower than tolerance)
             selectedTexture = choseTypeTexture(img, img2, patch, grid, patchesInX, patchesInY);
@@ -234,7 +234,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
              
 	        Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
 	        bestP.image.copyTo(newimg(rect2));
-	        Mat tmp = newimg(Rect(posXPatch, posYPatch, patch.width, patch.height));
+	        //Mat tmp = newimg(Rect(posXPatch, posYPatch, patch.width, patch.height));
       
 	       /* if (patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX-1][patchesInY])
 	        {
@@ -251,7 +251,6 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 				Mat src = bestP.image;
 				Mat dst;
-				Mat _newimg;
 
 				dst = newimg(Rect(0, 0, posXPatch + patch.width, posYPatch + patch.height));
 				//imshow("dst", dst);
@@ -268,12 +267,6 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 				seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
 				normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
-
-				if ( patchesInY - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX][patchesInY-1]) {
-	       			
-					//TODO
-					//Same for patches in X
-	       		}	
 
 	       //	} 
 	       	
@@ -315,6 +308,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 			dst = newimg(Rect(0, 0, patch.width, posYPatch + patch.height));
 			imshow("dst", dst);
+			imshow("src", src);
 			
 			// Create an all white mask
        		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
@@ -326,7 +320,8 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 			Mat normal_clone;
 
 			seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
-			//imshow("nor", normal_clone);
+			//circle( normal_clone, center, 5.0, Scalar( 0, 50, 255 ), 1, 8 );
+			imshow("nor", normal_clone);
 			normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
 
             target = newTarget;
