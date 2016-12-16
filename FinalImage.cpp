@@ -82,7 +82,7 @@ Patch FinalImage::getRandomPatch(std::vector<Patch> patchesList)
 
     double tempError;
     Patch bestPatch; 
-    double minError = 50.0; //Chose a value for acceptable error
+    double minError = 2.0; //Chose a value for acceptable error
     
     //Check that each new error stored in PatchesList is in fact new
     std::vector<Patch>::iterator isRepeatedElem;
@@ -138,7 +138,7 @@ Mat FinalImage::placeRandomly(Patch patch, Mat &img)
 
 }
 
-Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, Patch &p, Grid &g, int x, int y) //Chose either background or details texutre
+Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, Patch &p, Grid &g, int x, int y) //Chose either background (0) or details (1) texutre
 {
 	if (g.grid[x][y] == 0){
 		p.typeOfTexture = 1;
@@ -186,7 +186,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	gridX = (width / patch.width) + 1; //plus one because with the overlaping of patches, there is space for one more
 	gridY = (height / patch.height) + 1;
 	Grid grid(gridX, gridY); //Create grid
-	grid.fill(); 
+	grid.fill(backgroundPorcentage); 
 	//poisson _poi;
 
 	selectedTexture = choseTypeTexture(img, img2, patch, grid, 0,0); //create target
@@ -194,13 +194,13 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
     Rect rect(0,0, target.width, target.height);
     target.image.copyTo(newimg(rect));
     
-	for (int patchesInY = 0; patchesInY < /*grid.grid[1].size()*/2; patchesInY++)
+	for (int patchesInY = 0; patchesInY < grid.grid[1].size(); patchesInY++)
    {
-        for (int patchesInX = 1; patchesInX < /*grid.grid.size()*/2; patchesInX++)
+        for (int patchesInX = 1; patchesInX < grid.grid.size(); patchesInX++)
         {
             //Start comparing patches (until error is lower than tolerance)
             selectedTexture = choseTypeTexture(img, img2, patch, grid, patchesInX, patchesInY);
-            for (int i = 0; i < 1000 ; i++) //This alue needs to be at least 50
+            for (int i = 0; i < 2000 ; i++) //This alue needs to be at least 50
             {
             	//Set image to the Patch
                 patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
@@ -231,9 +231,12 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
             //chose random patch from best errors list
             bestP = getRandomPatch(_patchesList);
+
+
+            Mat tmp = selectSubset(img, patch.width, patch.height);
              
 	        Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
-	        bestP.image.copyTo(newimg(rect2));
+	        tmp.copyTo(newimg(rect2));
 	        //Mat tmp = newimg(Rect(posXPatch, posYPatch, patch.width, patch.height));
       
 	       /* if (patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX-1][patchesInY])
@@ -259,7 +262,12 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	       		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
 
 	       		// The location of the center of the src in the dst
-				Point center(posXPatch + patch.width/3 , posYPatch + (patch.height/2));
+	       		Point center;
+	       		if (patchesInY == 0)
+					center = Point(posXPatch + overlap*2, posYPatch + patch.height/2);
+				else
+					center = Point(posXPatch + overlap*2, posYPatch + overlap*2 );
+				//cout << "value: "  << patch.height/2 << endl;
 
 				// Seamlessly clone src into dst and put the results in output
 				Mat normal_clone;
@@ -303,7 +311,10 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
             bestP = getRandomPatch(_patchesList);
             newTarget.image = bestP.image;
 
-            Mat src = bestP.image;
+            Rect rect2(0, posYPatch, patch.width, patch.height);
+	        newTarget.image.copyTo(newimg(rect2));
+
+            Mat src = newTarget.image;
 			Mat dst;
 
 			dst = newimg(Rect(0, 0, patch.width, posYPatch + patch.height));
@@ -314,14 +325,14 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
        		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
 
        		// The location of the center of the src in the dst
-			Point center(patch.width/2 , posYPatch + (patch.height/2));
+			Point center(patch.width/2 , posYPatch );
 
 			// Seamlessly clone src into dst and put the results in output
 			Mat normal_clone;
 
 			seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
-			//circle( normal_clone, center, 5.0, Scalar( 0, 50, 255 ), 1, 8 );
-			imshow("nor", normal_clone);
+			circle( normal_clone, center, 5.0, Scalar( 0, 50, 255 ), 1, 8 );
+			//imshow("nor", normal_clone);
 			normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
 
             target = newTarget;

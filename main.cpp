@@ -37,7 +37,6 @@ int main( int argc, char** argv ){
     //Create empty output texture
     FinalImage _finalImage(InputImg, InputImg.rows, InputImg.cols, 10);
    
-    
 
     cout << "1. Random    2. Image Quilting " << endl;
     cin >> option;
@@ -47,10 +46,10 @@ int main( int argc, char** argv ){
     {
         cout << "How much porcentage you want to give to the Background (0 - 100) " << endl;
         //cin >> backgroundPorcentage;
-        backgroundPorcentage = 70; //hardcoded just for debugging 
+        backgroundPorcentage = 80; //hardcoded just for debugging 
         cout << "How much porcentage you want to give to the details ( 0 - 100) " << endl;
         //cin >> detailsPorcentage;
-        detailsPorcentage = 30;
+        detailsPorcentage = 20;
         //TODO verification that background and details sums to 100%
         result = _finalImage.textureSynthesis(_patch, _target, InputImg, InputImg2, backgroundPorcentage, detailsPorcentage);
     }
