@@ -281,29 +281,6 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 				normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
 
 					
-				// Create an all white mask
-	       		/*Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
-
-				Point center;
-	       		if (patchesInY == 0){
-	       			dst = newimg(Rect(0,0, (patchesInX + 1) * (patch.width-overlap), patch.height));
-	       			bestP.image.copyTo(dst(Rect(posXPatch, 0, patch.width, patch.height)));
-	       			imshow("dst", dst);
-	       			//src = target.image;
-					//center = Point(posXPatch - overlap*2, posYPatch + patch.height/2);
-	       		}
-				/*else{
-					src = newimg(Rect(posXPatch-(patch.width - overlap), 0, posXPatch + patch.width, posYPatch + patch.height));
-					center = Point(posXPatch + overlap, posYPatch + overlap*2 );
-				}*/
-				//cout << "value: "  << patch.height/2 << endl;
-
-				// Seamlessly clone src into dst and put the results in output
-				//Mat normal_clone;
-				//Mat mixed_clone;
-
-			//  seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);				
-			//	normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));*/
 
 	       //	} 
 	       	
