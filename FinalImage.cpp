@@ -163,9 +163,10 @@ void FinalImage::addLinearBlending(Mat &target, Mat &patch, int posXPatch, int p
 
 	beta = ( 1.0 - alpha );
 	addWeighted(target, alpha, patch, beta, 0.0, dst);
+	imshow("dst blend", dst);
 
 	Rect rect2(posX, posY, target.cols, target.rows);
-	dst.copyTo(newimg(rect2));
+	//dst.copyTo(newimg(rect2));
 
 }
 
@@ -200,7 +201,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
         {
             //Start comparing patches (until error is lower than tolerance)
             selectedTexture = choseTypeTexture(img, img2, patch, grid, patchesInX, patchesInY);
-            for (int i = 0; i < 2000 ; i++) //This alue needs to be at least 50
+            for (int i = 0; i < 500 ; i++) //This alue needs to be at least 50
             {
             	//Set image to the Patch
                 patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
@@ -236,15 +237,21 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
             Mat tmp = selectSubset(img, patch.width, patch.height);
              
 	        Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
+	        imshow("tmp", tmp);
 	        tmp.copyTo(newimg(rect2));
 	        //Mat tmp = newimg(Rect(posXPatch, posYPatch, patch.width, patch.height));
+
+	        Mat src;
+			Mat dst;
       
-	       /* if (patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX-1][patchesInY])
+	        /*if (patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX-1][patchesInY])
 	        {
 	        	cout << "same type " << endl;
-	       		addLinearBlending(bestP.roiOfTarget, bestP.roiOfPatch, posXPatch, posYPatch);
-	       		
-	       		if ( patchesInY - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX][patchesInY-1]) {
+
+	       		//addLinearBlending(bestP.roiOfTarget, bestP.roiOfPatch, posXPatch, posYPatch);
+				addLinearBlending(bestP.image, target.image, posXPatch + patch.width, posYPatch);
+
+	       		/*if ( patchesInY - 1 >= 0 && grid.grid[patchesInX][patchesInY] == grid.grid[patchesInX][patchesInY-1]) {
 	       			cout << "same type 2" << endl;
 	       			addLinearBlending(bestP.roiOfBotTarget, bestP.roiOfTopPatch, posXPatch, posYPatch-overlap);
 	       		}	
@@ -252,11 +259,8 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	       	else{*/
 	       		cout << "different type " << endl;
 
-				Mat src = bestP.image;
-				Mat dst;
-
+				src = bestP.image;
 				dst = newimg(Rect(0, 0, posXPatch + patch.width, posYPatch + patch.height));
-				//imshow("dst", dst);
 				
 				// Create an all white mask
 	       		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
@@ -273,8 +277,33 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 				Mat normal_clone;
 				Mat mixed_clone;
 
-				seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
+				seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);				
 				normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
+
+					
+				// Create an all white mask
+	       		/*Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
+
+				Point center;
+	       		if (patchesInY == 0){
+	       			dst = newimg(Rect(0,0, (patchesInX + 1) * (patch.width-overlap), patch.height));
+	       			bestP.image.copyTo(dst(Rect(posXPatch, 0, patch.width, patch.height)));
+	       			imshow("dst", dst);
+	       			//src = target.image;
+					//center = Point(posXPatch - overlap*2, posYPatch + patch.height/2);
+	       		}
+				/*else{
+					src = newimg(Rect(posXPatch-(patch.width - overlap), 0, posXPatch + patch.width, posYPatch + patch.height));
+					center = Point(posXPatch + overlap, posYPatch + overlap*2 );
+				}*/
+				//cout << "value: "  << patch.height/2 << endl;
+
+				// Seamlessly clone src into dst and put the results in output
+				//Mat normal_clone;
+				//Mat mixed_clone;
+
+			//  seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);				
+			//	normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));*/
 
 	       //	} 
 	       	
@@ -291,7 +320,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
         if (patchesInY < newimg.rows/patch.height)
        {
-            for (int i = 0; i < 1000; i++)
+            for (int i = 0; i < 500; i++)
             {
             	selectedTexture = choseTypeTexture(img, img2, patch, grid, 0, patchesInY+1);
                 newTarget.image = selectSubset(selectedTexture, newTarget.width, newTarget.height); //subselection from original texture
@@ -325,13 +354,13 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
        		Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
 
        		// The location of the center of the src in the dst
-			Point center(patch.width/2 , posYPatch );
+			Point center(patch.width/2 , posYPatch + (overlap*2));
 
 			// Seamlessly clone src into dst and put the results in output
 			Mat normal_clone;
 
 			seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);
-			circle( normal_clone, center, 5.0, Scalar( 0, 50, 255 ), 1, 8 );
+			//circle( normal_clone, center, 5.0, Scalar( 0, 50, 255 ), 1, 8 );
 			//imshow("nor", normal_clone);
 			normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
 
