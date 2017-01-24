@@ -11,10 +11,10 @@ public:
 	FinalImage(Mat &img, int, int, int);
     Mat selectSubset(Mat &originalImg, int, int);
     Mat placeRandomly(Patch, Mat &img);
-    Mat textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2, int, int);
+    Mat textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2, Mat &img3, int, int);
     double msqe(Mat &target, Mat &patch);
     Patch getRandomPatch(std::vector<Patch> patchesList);
-    Mat choseTypeTexture( Mat &img, Mat &img2, Patch &p, Grid &g, int, int);
+    Mat choseTypeTexture( Mat &img, Mat &img2, Mat &img3, Patch &p, Grid &g, int, int);
     void addLinearBlending(Mat &target, Mat &patch, int posXPatch, int posYPatch);
 
     std::vector<Patch> _patchesList;

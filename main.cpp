@@ -17,12 +17,15 @@ int main( int argc, char** argv ){
     // Create empty output image.
     Mat InputImg; //Background
     Mat InputImg2; //Details
+    Mat InputImg3;
     Mat result;
     
     //Load input images
     //img = imread("Moon.jpg");
-    InputImg = imread("grass2.jpg");
-    InputImg2 = imread("newflowers.jpg");
+    InputImg = imread("AST2.jpg");
+    InputImg2 = imread("triangle3.jpg");
+    InputImg3 = imread("circle.jpg");
+
     int backgroundPorcentage, detailsPorcentage = 0;
 
    // imshow("original ", InputImg);
@@ -34,7 +37,7 @@ int main( int argc, char** argv ){
     Patch _target(InputImg);
 
 
-    //Create empty output texture
+    //Create empty output texure
     FinalImage _finalImage(InputImg, InputImg.rows, InputImg.cols, 10);
    
 
@@ -46,12 +49,12 @@ int main( int argc, char** argv ){
     {
         cout << "How much porcentage you want to give to the Background (0 - 100) " << endl;
         //cin >> backgroundPorcentage;
-        backgroundPorcentage = 80; //hardcoded just for debugging 
+        backgroundPorcentage = 70; //hardcoded just for debugging 
         cout << "How much porcentage you want to give to the details ( 0 - 100) " << endl;
         //cin >> detailsPorcentage;
-        detailsPorcentage = 20;
+        detailsPorcentage = 30;
         //TODO verification that background and details sums to 100%
-        result = _finalImage.textureSynthesis(_patch, _target, InputImg, InputImg2, backgroundPorcentage, detailsPorcentage);
+        result = _finalImage.textureSynthesis(_patch, _target, InputImg, InputImg2, InputImg3, backgroundPorcentage, detailsPorcentage);
     }
    /* else if (option == 3)
         result = img;*/

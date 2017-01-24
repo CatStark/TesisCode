@@ -38,10 +38,13 @@ void Grid::mapGeneration(int backgroundPercentage)
 		for (int i = 0; i < grid.size(); i++){
 			if (grid[i][j] > flag)
 				grid[i][j] = 0;
-			else
+			else if (grid[i][j] <= flag && grid[i][j] >= flag/2 )
 				grid[i][j] = 1;
+			else
+				grid[i][j] = 2;
 			cout << "[" << grid[i][j] << "]";
 		}
 		cout << endl;
 	}
+
 }
