@@ -213,7 +213,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
             {
             	//Set image to the Patch
             	//if (patch.typeOfTexture == 0)
-                	patch.image = selectSubset(img, patch.width, patch.height); //subselection from original texture
+                	patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
       
                 //cout << "ok " << endl;
                 //Create ROIs
