@@ -14,7 +14,7 @@ struct findRepeatedPatch
 //Constructor
 FinalImage::FinalImage(Mat &img, int y_expand, int x_expand, int windowSize)
 {
-	newimg = Mat::zeros(img.rows + y_expand  , img.cols + x_expand, CV_64FC3);
+	newimg = Mat::zeros(img.rows * 2  , img.cols *2 , CV_64FC3);
 	newimg.convertTo(newimg, CV_8UC1);
 	width = newimg.cols;
     height = newimg.rows;
