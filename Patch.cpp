@@ -4,7 +4,7 @@
 //Constructors
 Patch::Patch(Mat &img)
 {
-	std::cout << "---------- Patch created ----------" << endl;
+	//std::cout << "---------- Patch created ----------" << endl;
 
 	//The patch has to be a square, so check what is bigger (width or height) and make a square
     if (img.cols >= img.rows){
@@ -20,7 +20,7 @@ Patch::Patch(Mat &img)
 
 Patch::Patch()
 {
-	std::cout << "---------- Patch created ----------" << endl;
+	//std::cout << "---------- Patch created ----------" << endl;
 }
 
 

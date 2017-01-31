@@ -1,5 +1,6 @@
 #include "FinalImage.h"
 
+typedef Graph<int,int,int> GraphType;
 
 struct findRepeatedPatch
 {
@@ -14,12 +15,201 @@ struct findRepeatedPatch
 //Constructor
 FinalImage::FinalImage(Mat &img, int y_expand, int x_expand, int windowSize)
 {
-	newimg = Mat::zeros(img.rows * 2  , img.cols *2 , CV_64FC3);
+	newimg = Mat::zeros(img.rows + y_expand  , img.cols + x_expand, CV_64FC3);
 	newimg.convertTo(newimg, CV_8UC1);
 	width = newimg.cols;
     height = newimg.rows;
     backgroundPorcentageTmp = 0;
 	cout << " ------------Output image created--------------" << endl;
+}
+
+Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
+{
+    //A = target, B = patch
+    //Validate all images
+    assert(A.data);
+    assert(B.data);
+    /*if (orientation == 1)
+    	assert(A.rows == B.rows);
+    else if (orientation == 2)
+    	assert(A.cols == B.cols);*/
+
+    Mat graphcut;
+    Mat graphcut_and_cutline;
+    Mat original_with_gc = A.clone();
+
+    //int xoffset = A.cols - overlap;
+
+    int xoffset = 0;
+    int yoffset = 0;
+    int _rows, _cols; //Of Mat
+
+    if (orientation == 1)
+    {
+        _rows = A.rows;
+        _cols = A.cols + B.cols - overlap;
+        xoffset = A.cols - overlap;
+        //cout << "cols : " << _cols << endl;
+    }
+    else if ( orientation == 2)
+    {
+        _rows = A.rows + B.rows - overlap;
+        _cols = A.cols;
+        yoffset = A.cols - overlap;
+    }
+    else if (orientation == 3)
+    {
+        _rows = A.rows + B.rows - overlap;
+        _cols = A.cols + B.cols - overlap;
+        xoffset = 0;
+        yoffset = A.rows - overlap;
+    }
+    
+    Mat no_graphcut(_rows, _cols, A.type() );
+    A.copyTo(no_graphcut(Rect(0, 0, A.cols, A.rows)));
+    B.copyTo(no_graphcut(Rect(xoffset, yoffset, B.cols, B.rows)));
+
+
+    /*Mat no_graphcut(A.rows, A.cols + B.cols - overlap, A.type());
+    A.copyTo(no_graphcut(Rect(0, 0, A.cols, A.rows)));
+    B.copyTo(no_graphcut(Rect(xoffset, 0, B.cols, B.rows)));*/
+
+    int est_nodes = A.rows * overlap;
+    int est_edges = est_nodes * 4;
+
+    GraphType g(est_nodes, est_edges);
+
+    for(int i=0; i < est_nodes; i++) {
+        g.add_node();
+    }
+
+    // Set the source/sink weights
+    for(int y=0; y < A.rows; y++) {
+        g.add_tweights(y*overlap + 0, INT_MAX, 0);
+        g.add_tweights(y*overlap + overlap-1, 0, INT_MAX);
+    }
+
+    // Set edge weights
+
+    for(int y=0; y < A.rows; y++) {
+        for(int x=0; x < overlap; x++) {
+            int idx = y*overlap + x;
+
+            Vec3b a0 = A.at<Vec3b>(y, xoffset + x);
+            Vec3b b0 = B.at<Vec3b>(y, x);
+            double cap0 = norm(a0, b0);
+
+            // Add right edge
+         	if(x+1 < overlap) {
+                Vec3b a1 = A.at<Vec3b>(y, xoffset + x + 1);
+                Vec3b b1 = B.at<Vec3b>(y, x + 1);
+
+                double cap1 = norm(a1, b1);
+
+                g.add_edge(idx, idx + 1, (int)(cap0 + cap1), (int)(cap0 + cap1));
+            }
+
+            // Add bottom edge
+            if(y+1 < A.rows) {
+                Vec3b a2 = A.at<Vec3b>(y+1, xoffset + x);
+                Vec3b b2 = B.at<Vec3b>(y+1, x);
+
+                double cap2 = norm(a2, b2);
+
+                g.add_edge(idx, idx + overlap, (int)(cap0 + cap2), (int)(cap0 + cap2));
+            }
+        }
+    }
+
+    if (orientation == 2)
+    cout << "test " << endl;
+
+
+    int flow = g.maxflow();
+    cout << "max flow: " << flow << endl; 
+
+    graphcut = no_graphcut.clone();
+    graphcut_and_cutline = no_graphcut.clone();
+
+    int idx = 0;
+    if (orientation == 1)
+    {
+        for(int y=0; y < A.rows; y++) {
+            for(int x=0; x < overlap; x++) {
+                if(g.what_segment(idx) == GraphType::SOURCE) {
+                    graphcut.at<Vec3b>(y, xoffset + x) = A.at<Vec3b>(y, xoffset + x);
+                }
+                else {
+                    graphcut.at<Vec3b>(y, xoffset + x) = B.at<Vec3b>(y, x);
+                }
+                graphcut_and_cutline.at<Vec3b>(y, xoffset + x) =  graphcut.at<Vec3b>(y, xoffset + x);
+
+                // Draw the cut
+                if(x+1 < overlap) {
+                    if(g.what_segment(idx) != g.what_segment(idx+1)) {
+                        graphcut_and_cutline.at<Vec3b>(y, xoffset + x) = Vec3b(0,0255,0);
+                        graphcut_and_cutline.at<Vec3b>(y, xoffset + x + 1) = Vec3b(0,255,0);
+                        graphcut_and_cutline.at<Vec3b>(y, xoffset + x - 1) = Vec3b(0,255,0);
+                    }
+                }
+
+                // Draw the cut
+                if(y > 0 && y+1 < A.rows) {
+                    if(g.what_segment(idx) != g.what_segment(idx + overlap)) {
+                        graphcut_and_cutline.at<Vec3b>(y-1, xoffset + x) = Vec3b(0,255,0);
+                        graphcut_and_cutline.at<Vec3b>(y, xoffset + x) = Vec3b(0,255,0);
+                        graphcut_and_cutline.at<Vec3b>(y+1, xoffset + x) = Vec3b(0,255,0);
+                    }
+                }
+                idx++;
+            }
+        }
+    }
+
+    if (orientation == 2)
+    {
+        for(int x=0; x < A.cols; x++) {
+            for(int y=0; y < overlap; y++) {
+                if(g.what_segment(idx) == GraphType::SOURCE) {
+                    graphcut.at<Vec3b>(yoffset + y, x) = A.at<Vec3b>(yoffset + y, x);
+                }
+                else {
+                    graphcut.at<Vec3b>(yoffset + y, x) = B.at<Vec3b>(y, x);
+                }
+
+                graphcut_and_cutline.at<Vec3b>(yoffset + y, x) =  graphcut.at<Vec3b>(yoffset + y, x);
+
+                // Draw the cut
+                if(y+1 < overlap) {
+                    if(g.what_segment(idx) != g.what_segment(idx+1)) {
+                        graphcut_and_cutline.at<Vec3b>(yoffset + y, x) = Vec3b(0,0255,0);
+                        graphcut_and_cutline.at<Vec3b>(yoffset + y + 1, x) = Vec3b(0,255,0);
+                        graphcut_and_cutline.at<Vec3b>(yoffset + y - 1, x) = Vec3b(0,255,0);
+                    }
+                }
+
+                // Draw the cut
+                //if(y > 0 && y+1 < A.rows) {
+                if(x > 0 && x+1 < A.cols) {
+                    if(g.what_segment(idx) != g.what_segment(idx + overlap)) {
+                        graphcut_and_cutline.at<Vec3b>(x-1, yoffset + y) = Vec3b(0,255,0);
+                        graphcut_and_cutline.at<Vec3b>(x, yoffset + y) = Vec3b(0,255,0);
+                        graphcut_and_cutline.at<Vec3b>(x+1, yoffset + y) = Vec3b(0,255,0);
+                    }
+                }
+                idx++;
+            }
+        }
+    }
+
+    /*imwrite("graphcut.jpg", graphcut);
+    imwrite("graphcut_and_cut_line.jpg", graphcut_and_cutline);*/
+    imshow("graphcut and cut line", graphcut_and_cutline);
+   // imshow("graphcut", graphcut);
+
+    //waitKey();
+
+    return graphcut;
 }
 
 Mat FinalImage::selectSubset(Mat &originalImg, int width_patch, int height_patch)
@@ -142,18 +332,19 @@ Mat FinalImage::choseTypeTexture(Mat &img, Mat &img2, Mat &img3, Patch &p, Grid 
 {
 	if (g.grid[x][y] == 0){
 		p.typeOfTexture = 0;
-		return img;
+		cout << "selected: " << p.typeOfTexture << endl;
+ 		return img;
 	}
 	else if (g.grid[x][y] == 1){
 		p.typeOfTexture = 1;
+		cout << "selected: " << p.typeOfTexture << endl;
 		return img2;
 	}
-	else{
+	else if (g.grid[x][y] == 2){
 		p.typeOfTexture = 2;
+		cout << "selected: " << p.typeOfTexture << endl;
 		return img3;
-	}
-	
-	
+	}	
 }
 
 void FinalImage::addLinearBlending(Mat &target, Mat &patch, int posXPatch, int posYPatch) //LinearBlending
@@ -172,13 +363,92 @@ void FinalImage::addLinearBlending(Mat &target, Mat &patch, int posXPatch, int p
 
 	Rect rect2(posX, posY, target.cols, target.rows);
 	dst.copyTo(newimg(rect2));
+}
 
+void FinalImage::GC(Mat &source)
+{
+	//Create Gaussian-Mixture-Models
+    //EM model;
+    Mat labels;
+
+    //Open another image
+    Mat image1, image2, patch, newimg;
+    //source = imread("FA.jpg");
+    //image2 = imread("circle.jpg");
+
+     //ouput images
+    cv::Mat meanImg(source.rows, source.cols, CV_32FC3);
+    cv::Mat fgImg(source.rows, source.cols, CV_8UC3);
+    cv::Mat bgImg(source.rows, source.cols, CV_8UC3);
+
+    //convert the input image to float
+    cv::Mat floatSource;
+    source.convertTo(floatSource, CV_32F);
+
+    //now convert the float image to column vector
+    cv::Mat samples(source.rows * source.cols, 3, CV_32FC1);
+    int idx = 0;
+    for (int y = 0; y < source.rows; y++) {
+        cv::Vec3f* row = floatSource.ptr<cv::Vec3f > (y);
+        for (int x = 0; x < source.cols; x++) {
+            samples.at<cv::Vec3f > (idx++, 0) = row[x];
+        }
+    }
+
+    //we need just 2 clusters
+    Ptr<ml::EM> em = ml::EM::create();
+    em->setClustersNumber(2);
+    em->trainEM( samples, noArray(), labels, noArray() );
+
+    //the two dominating colors
+    cv::Mat means = em->getMeans();
+    //the weights of the two dominant colors
+    cv::Mat weights = em->getWeights();
+
+    //we define the foreground as the dominant color with the largest weight
+    const int fgId = weights.at<float>(0) > weights.at<float>(1) ? 0 : 1;
+
+    //now classify each of the source pixels
+    idx = 0;
+    for (int y = 0; y < source.rows; y++) {
+        for (int x = 0; x < source.cols; x++) {
+
+            //classify
+            const int result = cvRound(em->predict2(samples.row(idx++), noArray() )[1]);
+            //get the according mean (dominant color)
+            const double* ps = means.ptr<double>(result, 0);
+
+            //set the according mean value to the mean image
+            float* pd = meanImg.ptr<float>(y, x);
+            //float images need to be in [0..1] range
+            pd[0] = ps[0] / 255.0;
+            pd[1] = ps[1] / 255.0;
+            pd[2] = ps[2] / 255.0;
+
+            //set either foreground or background
+            if (result == fgId) {
+                fgImg.at<cv::Point3_<uchar> >(y, x, 0) = source.at<cv::Point3_<uchar> >(y, x, 0);
+            } else {
+                bgImg.at<cv::Point3_<uchar> >(y, x, 0) = source.at<cv::Point3_<uchar> >(y, x, 0);
+            }
+        }
+    }
+
+    cv::imshow("original Image", source);
+    cv::imshow("Means", meanImg);
+    cv::imshow("Foreground", fgImg);
+    cv::imshow("Background", bgImg);
 }
 
 Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2, Mat &img3, int backgroundPorcentage, int detailsPorcentage)
 {
 	Patch newTarget(img); //Temporal target for new rows
 	Patch bestP(img);
+
+	//Mats for cloning
+	Mat src;
+	Mat dst;
+	Mat normal_clone;
 
 	Mat selectedTexture;
 
@@ -191,37 +461,36 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	//Size of grid
 	gridX = (width / patch.width) + 1; //plus one because with the overlaping of patches, there is space for one more
 	gridY = (height / patch.height) + 1;
-	Grid grid(gridX, gridY); //Create grid
-	grid.fill(backgroundPorcentage); 
-	//poisson _poi;
 
-	selectedTexture = choseTypeTexture(img, img2, img3, patch, grid, 0,0); //create target
+	//Create grid with random distribution for either background or texture
+	Grid grid(gridX, gridY); 
+	grid.fill(backgroundPorcentage); 
+
+	//Create first target
+	selectedTexture = choseTypeTexture(img, img2, img3, patch, grid, 0,0); 
     target.image = selectSubset(selectedTexture, target.width, target.height); //Create a smaller subset of the original image 
     Rect rect(0,0, target.width, target.height);
     target.image.copyTo(newimg(rect));
     
-    
-	for (int patchesInY = 0; patchesInY < /*grid.grid[1].size()*/2; patchesInY++)
+	for (int patchesInY = 0; patchesInY < /*grid.grid[1].size()*/1; patchesInY++)
    {
-        for (int patchesInX = 1; patchesInX < grid.grid.size(); patchesInX++)
-        {
-            //Start comparing patches (until error is lower than tolerance)
-            //Comment this just for testing new method (fill everything with background and add details later)
+        for (int patchesInX = 1; patchesInX < /*grid.grid.size()*/4; patchesInX++) 
+        {    
+        	//Choose texture background or foreground 
             selectedTexture = choseTypeTexture(img, img2, img3, patch, grid, patchesInX, patchesInY);
             
+            //Start comparing patches (until error is lower than tolerance)
             for (int i = 0; i < 500 ; i++) //This alue needs to be at least 50
             {
-            	//Set image to the Patch
-            	//if (patch.typeOfTexture == 0)
-                	patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
+            	//Set image to patch
+                patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
       
-                //cout << "ok " << endl;
                 //Create ROIs
                 patch.roiOfPatch = patch.image(Rect(0, 0, overlap, patch.height));
                 patch.roiOfTarget = target.image(Rect(offset, 0, overlap, target.height));
                 patch.halfOfTarget = target.image(Rect(target.width/4, 0, target.width-(target.width/4), target.height));
 
-                err = msqe(patch.roiOfTarget, patch.roiOfPatch);
+                err = msqe(patch.roiOfTarget, patch.roiOfPatch); //Get MSQE
 
                 if (patchesInY > 0) //if is the second or bigger row
                 {
@@ -236,50 +505,69 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
                 _patchesList.push_back(patch);
                 err = 0;
             }
-            cout << "test " << endl;
 
             //chose random patch from best errors list
             bestP = getRandomPatch(_patchesList);
-            Mat tmp = selectSubset(img, patch.width, patch.height);
-             
-	        Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
-	        tmp.copyTo(newimg(rect2));
+            cout << "type: " << bestP.typeOfTexture << endl;
+            if(bestP.typeOfTexture != 0)
+            	imshow("test", bestP.image);
 
-	        Mat src;
-			Mat dst;
-			// Seamlessly clone src into dst and put the results in output
-			Mat normal_clone;
-			Mat mixed_clone;
-
-			src = bestP.image;
-			dst = newimg(Rect(0, 0, posXPatch + patch.width, posYPatch + patch.height));
-				
-			// Create an all white mask
-	       	Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
-      
-	     	if(patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == 0)
+      		//If background
+	     /*	if(patchesInX - 1 >= 0 && grid.grid[patchesInX][patchesInY] == 0 && 
+	     		grid.grid[patchesInX][patchesInY - 1] == 0 &&
+	     		grid.grid[patchesInX-1][patchesInY ] == 0 )
 	        {	
+	        	cout << "background " << endl;
+	        	//Clone src into dst and put the results in output
+				src = bestP.image;
+				dst = newimg(Rect(0, 0, posXPatch + patch.width, posYPatch + patch.height));
+					
+				// Create an all white mask
+		       	Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
 
-	       		// The location of the center of the src in the dst
-	       		Point center;
+	       		Point center; // The location of the center of the src in the dst	       		
 	       		if (patchesInY == 0) //First row, don't change on vertical axis (Y)
-					center = Point(posXPatch + overlap*2, posYPatch + patch.height/2);
+					center = Point(posXPatch + overlap*3, posYPatch + patch.height/2);
 				else
-					center = Point(posXPatch + overlap*2, posYPatch + overlap*2 );
+					center = Point(posXPatch + overlap*3, posYPatch + overlap*2 );
 
 				seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE);			
 				normal_clone.copyTo(newimg(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
 	        }
+	        else  //If feautres
+	        {*/
+	        	Mat tmp = newimg(Rect(0, posYPatch, posXPatch + overlap, bestP.image.rows)); //temporal target
+	        	imshow("im 2", bestP.image);
+	        	//Mat gc = graph_Cut(tmp, bestP.image, overlap, 1);
+	        	Mat gc = graph_Cut( newimg(Rect(0, posYPatch, posXPatch + overlap, bestP.image.rows)) , bestP.image, overlap, 1);
+	        	imshow("gc", gc);
+	        	gc.copyTo(newimg(Rect(posXPatch-(patch.width - overlap), posYPatch, gc.cols, gc.rows)));
+	        	
+	       		/*if (patchesInY > 0){
+	       			tpm = newimg(Rect(posXPatch, posYPatch-(patch.height - overlap), bestP.image.cols, bestP.image.rows));
+	       			gc = graph_Cut(tmp, bestP.image, overlap, 2);
+	       			imshow("gc vertical", gc);
+	        	    gc.copyTo(newimg(Rect(posXPatch, posYPatch-(patch.height - overlap) , gc.cols, gc.rows)));
+
+	        	   /* Mat tpmTarget = newimg(Rect(posXPatch, posYPatch-(patch.height - overlap), bestP.image.cols, bestP.image.rows));
+	       			Mat tmpPatch = newimg(Rect(posXPatch, posYPatch, bestP.image.cols, bestP.image.rows));
+	       			gc = graph_Cut(tpmTarget, tmpPatch, overlap, 2);
+	       			imshow("gc vertical", gc);
+	        	    gc.copyTo(newimg(Rect(posXPatch, posYPatch-(patch.height - overlap) , gc.cols, gc.rows)));
+	       		}*/
+					
+	        //}
 	      
+   			//Set new target, which is the best patch of this iteration	      
 	        target.image = bestP.image;
             posXPatch += patch.width - overlap;
             _patchesList.clear();
 		}
-		posXPatch = patch.width - overlap;
+		
+		posXPatch = patch.width - overlap; //Update posision of X
 
-		cout << "test2 " << endl;
-		//New patch of the next row (new first target)
-        posYPatch += patch.height - overlap;
+		//New patch of the next row (which is the new first target)
+        posYPatch += patch.height - overlap; //Update posision of Y
         newTarget.roiOfBotTarget = newimg(Rect(0, posYPatch , patch.width, overlap));
 
         if (patchesInY < newimg.rows/patch.height) //new target on next row
@@ -333,7 +621,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 	posYPatch = 0;
 	posXPatch = patch.width - overlap;
-	for (int patchesInY = 0; patchesInY < grid.grid[1].size(); patchesInY++)
+	/*for (int patchesInY = 0; patchesInY < grid.grid[1].size(); patchesInY++)
    {
         for (int patchesInX = 1; patchesInX < grid.grid.size(); patchesInX++)
         {
@@ -357,9 +645,6 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	                {
 	                    patch.roiOfTopPatch = patch.image(Rect(0, 0, patch.width, overlap));
 	                    patch.roiOfBotTarget = newimg(Rect(posXPatch, posYPatch - overlap, patch.width, overlap));
-	                   
-	                    /*imshow("bot t", patch.roiOfBotTarget);
-		       			imshow("top p", patch.roiOfTopPatch);*/
 	                    
 	                    err += msqe(patch.roiOfTopPatch, patch.roiOfBotTarget);
 	                    err = err/2; 
@@ -373,136 +658,17 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	            bestP = getRandomPatch(_patchesList);
 	            Mat tmp = selectSubset(img, patch.width, patch.height);
 	             
-		        Rect rect2(posXPatch, posYPatch, patch.width, patch.height);
-		        imshow("tmp", tmp);
-
-		        Mat src;
-				Mat dst;
-				// Seamlessly clone src into dst and put the results in output
-				Mat normal_clone;
-				Mat mixed_clone;
-
-				src = bestP.image;
-				dst = newimg(Rect(0, 0, posXPatch + patch.width, posYPatch + patch.height));
-					
-				// Create an all white mask
-		       	Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
-
-		       	//GRABCUT
-
-				// define bounding rectangle
-			    int border = 15;
-			    int border2 = border + border;
-			    cv::Rect rectangle(border, border, bestP.image.cols-border2, bestP.image.rows-border2);
-
-			    cv::Mat result; // segmentation result (4 possible values)
-			    cv::Mat bgModel,fgModel; // the models (internally used)
-			 
-
-			    // GrabCut segmentation
-			    cv::grabCut(bestP.image,    // input image
-			        result,   // segmentation result
-			        rectangle,// rectangle containing foreground 
-			        bgModel,fgModel, // models
-			        1,        // number of iterations
-			        cv::GC_INIT_WITH_RECT); // use rectangle
-			    
-			    // Get the pixels marked as likely foreground
-			    cv::compare(result, GC_PR_FGD, result, CMP_EQ);
-			    
-			    // Generate output image
-			    cv::Mat foreground(bestP.image.size(),CV_8UC3,cv::Scalar(0,0,0));
-			    bestP.image.copyTo(foreground,result); // bg pixels not copied
-			 
-			 	cv::rectangle(bestP.image, rectangle, cv::Scalar(255,255,255),1);
-			    imshow("Image",bestP.image);
-			 
-			    // display result
-			    imshow("Segmented Image",foreground);
-			    //END GRABCUT
-
-			    //Convert to BGRA
-			    Mat thr;
-			    Mat dst2 = Mat(foreground.cols, foreground.rows, CV_8UC4);
-
-			    //Grayscaling
-				cvtColor(foreground,tmp,CV_BGR2GRAY);
-
-				//Thresholding
-				threshold(tmp,thr,100,255,0);
-
-				//Splitting & adding Alpha
-				vector<Mat> channels;   // C++ version of ArrayList<Mat>
-				split(foreground, channels);   // Automatically splits channels and adds them to channels. The size of channels = 3
-				channels.push_back(thr);   // Adds mask(alpha) channel. The size of channels = 4	
-
-				//Mat rgb[3];
-				//split(foreground,rgb);
-
-				// 5. Merging
-				merge(channels, dst2);   // dst is created with 4-channel(BGRA).
-
-				//Mat rgba[4]={rgb[0],rgb[1],rgb[2],thr};
-				//merge(rgba,4,dst2);
-				//imwrite("nue.png",dst2);
-				imshow("dst2", dst2);
-				//End convertion
-				
-				cout << "posXPatch " << posXPatch << endl; 
-				Point location(posXPatch, posYPatch);
-				Mat output;
-			    dst.copyTo(output);
-
-				  // start at the row indicated by location, or at row 0 if location.y is negative.
-				  for(int y = std::max(location.y , 0); y < dst.rows; ++y)
-				  {
-				    int fY = y - location.y; // because of the translation
-
-				    // we are done of we have processed all rows of the foreground image.
-				    if(fY >= dst2.rows)
-				      break;
-
-				    // start at the column indicated by location, 
-
-				    // or at column 0 if location.x is negative.
-				    for(int x = std::max(location.x, 0); x < dst.cols; ++x)
-				    {
-				      int fX = x - location.x; // because of the translation.
-
-				      // we are done with this row if the column is outside of the foreground image.
-				      if(fX >= dst2.cols)
-				        break;
-
-				      // determine the opacity of the foregrond pixel, using its fourth (alpha) channel.
-				      double opacity = ((double)dst2.data[fY * dst2.step + fX * dst2.channels() + 3])/ 255.;
-
-
-				      // and now combine the background and foreground pixel, using the opacity, 
-
-				      // but only if opacity > 0.
-				      for(int c = 0; opacity > 0 && c < output.channels(); ++c)
-				      {
-				        unsigned char foregroundPx =
-				          dst2.data[fY * dst2.step + fX * dst2.channels() + c];
-				        unsigned char backgroundPx =
-				          dst.data[y * dst.step + x * dst.channels() + c];
-				        output.data[y*output.step + output.channels()*x + c] =
-				          backgroundPx * (1.-opacity) + foregroundPx * opacity;
-				      }
-				    }
-				  }
-
-			    //imshow("test png", output);
-			    //imwrite("testPNG.png", output);
-
-			    output.copyTo(newimg(Rect(0,0, output.cols, output.rows)));
+		       Mat tpm = newimg(Rect(posXPatch-(patch.width - overlap), 0, bestP.image.cols, bestP.image.rows));
+	        	Mat gc = graph_Cut(tmp, bestP.image, overlap);
+	        	imshow("gc", gc);
+	        	gc.copyTo(newimg(Rect(posXPatch-(patch.width - overlap), posYPatch, gc.cols, gc.rows)));
         	}
         	posXPatch += patch.width - overlap;
         }
         posXPatch = patch.width - overlap;
 		//New patch of the next row (new first target)
        posYPatch += patch.height - overlap;
-    }
+    }*/
 	
     imwrite("final.png", newimg);
 	return newimg;
