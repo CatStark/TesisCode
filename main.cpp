@@ -22,9 +22,9 @@ int main( int argc, char** argv ){
     
     //Load input images
     //img = imread("Moon.jpg");
-    InputImg = imread("grass2.jpg");
-    InputImg2 = imread("newflowers.jpg");
-    InputImg3 = imread("flores.jpg");
+    InputImg = imread("AST3.jpg");
+    InputImg2 = imread("AST3.jpg");
+    InputImg3 = imread("AST3.jpg");
 
     int backgroundPorcentage, detailsPorcentage = 0;
 

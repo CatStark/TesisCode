@@ -18,7 +18,7 @@ public:
     Mat choseTypeTexture( Mat &img, Mat &img2, Mat &img3, Patch &p, Grid &g, int, int);
     void addLinearBlending(Mat &target, Mat &patch, int posXPatch, int posYPatch);
     void GC(Mat &source);
-    Mat graph_Cut(Mat& A, Mat& B, int overlap_width, int orientation);
+    Mat graph_Cut(Mat& A, Mat& B, int overlap, int orientation);
 
     std::vector<Patch> _patchesList;
     _patches tmpPatch;
