@@ -1,5 +1,6 @@
 #include "FinalImage.h"
 
+
 typedef Graph<int,int,int> GraphType;
 
 struct findRepeatedPatch
@@ -46,7 +47,6 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
         _rows = A.rows;
         _cols = A.cols + B.cols - overlap;
         xoffset = A.cols - overlap;
-        //cout << "cols : " << _cols << endl;
     }
     else if ( orientation == 2)
     {
@@ -55,17 +55,17 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
         yoffset = A.rows - overlap;
     }
 
-    
+
     Mat no_graphcut(_rows, _cols, A.type() );
     A.copyTo(no_graphcut(Rect(0, 0, A.cols, A.rows)));
     B.copyTo(no_graphcut(Rect(xoffset, yoffset, B.cols, B.rows)));
+    imshow("no graphcut ", no_graphcut);
 
     int est_nodes;
-
-    if (orientation == 1)
-    	est_nodes = A.rows * overlap;
-    else
-    	est_nodes = A.cols * overlap;
+    if (orientation == 1)      
+        est_nodes = A.rows * overlap;
+    else  
+        est_nodes = A.cols * overlap;
     int est_edges = est_nodes * 4;
 
     GraphType g(est_nodes, est_edges);
@@ -74,82 +74,83 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
         g.add_node();
     }
 
-    // Set edge weights
-    if(orientation == 1)
+    if (orientation == 1)
     {
-    	// Set the source/sink weights
-    	for(int y=0; y < A.rows; y++) {
-        g.add_tweights(y*overlap + 0, INT_MAX, 0);
-        g.add_tweights(y*overlap + overlap-1, 0, INT_MAX);
-    	}
+        // Set the source/sink weights
+        for(int y=0; y < A.rows; y++) {
+            g.add_tweights(y*overlap + 0, INT_MAX, 0);
+            g.add_tweights(y*overlap + overlap-1, 0, INT_MAX);
+        }
 
-	    for(int y=0; y < A.rows; y++) {
-	        for(int x=0; x < overlap; x++) {
-	            int idx = y*overlap + x;
+        // Set edge weights
+        for(int y=0; y < A.rows; y++) { //Change this 
+            for(int x=0; x < overlap; x++) {
+                int idx = y*overlap + x;
 
-	            Vec3b a0 = A.at<Vec3b>(y, xoffset + x);
-	            Vec3b b0 = B.at<Vec3b>(y, x);
-	            double cap0 = norm(a0, b0);
+                Vec3b a0 = A.at<Vec3b>(y, xoffset + x);
+                Vec3b b0 = B.at<Vec3b>(y, x);
+                double cap0 = norm(a0, b0);
 
-	            // Add right edge
-	         	if(x+1 < overlap) {
-	                Vec3b a1 = A.at<Vec3b>(y, xoffset + x + 1);
-	                Vec3b b1 = B.at<Vec3b>(y, x + 1);
+                // Add right edge
+                if(x+1 < overlap) {
+                    Vec3b a1 = A.at<Vec3b>(y, xoffset + x + 1);
+                    Vec3b b1 = B.at<Vec3b>(y, x + 1);
 
-	                double cap1 = norm(a1, b1);
+                    double cap1 = norm(a1, b1);
 
-	                g.add_edge(idx, idx + 1, (int)(cap0 + cap1), (int)(cap0 + cap1));
-	            }
+                    g.add_edge(idx, idx + 1, (int)(cap0 + cap1), (int)(cap0 + cap1));
+                }
 
-	            // Add bottom edge
-	            if(y+1 < A.rows) {
-	                Vec3b a2 = A.at<Vec3b>(y+1, xoffset + x);
-	                Vec3b b2 = B.at<Vec3b>(y+1, x);
+                // Add bottom edge
+                if(y+1 < A.rows) {
+                    Vec3b a2 = A.at<Vec3b>(y+1, xoffset + x);
+                    Vec3b b2 = B.at<Vec3b>(y+1, x);
 
-	                double cap2 = norm(a2, b2);
+                    double cap2 = norm(a2, b2);
 
-	                g.add_edge(idx, idx + overlap, (int)(cap0 + cap2), (int)(cap0 + cap2));
-	            }
-	        }
-	    }
-	}
-	else if (orientation == 2)
-	{
-		// Set the source/sink weights
-		for(int y=0; y < A.cols; y++) {
-        g.add_tweights(y*overlap + 0, INT_MAX, 0);
-        g.add_tweights(y*overlap + overlap-1, 0, INT_MAX);
-    	}
+                    g.add_edge(idx, idx + overlap, (int)(cap0 + cap2), (int)(cap0 + cap2));
+                }
+            }
+        }
+    }
+    else 
+    {
+        //Set the source/sink weights
+        for(int x=0; x < A.cols; x++) {
+            g.add_tweights(x*overlap + 0, INT_MAX, 0); // Add the Terminal nodes 
+            g.add_tweights(x*overlap + overlap - 1, 0, INT_MAX);
+        }
+        for(int x=0; x < A.cols; x++) {
+            for( int y=0; y < overlap; y++)  {
+                int idx = x*overlap + y;
 
-    // Set edge weights
-		for(int x=0; x < A.cols; x++) {
-	        for(int y=0; y < overlap; y++) {
-	            int idx = x*overlap + y;
+                Vec3b a0 = A.at<Vec3b>(y, xoffset + x);
+                Vec3b b0 = B.at<Vec3b>(y, x);
+                double cap0 = norm(a0, b0);
 
-	            Vec3b a0 = A.at<Vec3b>(y, xoffset + x);
-	            Vec3b b0 = B.at<Vec3b>(y, x);
-	            double cap0 = norm(a0, b0);
+                
+                 // Add bottom edge
+                if(y+1 < overlap) {
+                    Vec3b a1 = A.at<Vec3b>(yoffset + y + 1, x);
+                    Vec3b b1 = B.at<Vec3b>(y + 1,x);
+                    double cap1 = norm(a1, b1);
+                    g.add_edge(idx, idx + 1, (int)(cap0 + cap1), (int)(cap0 + cap1));
+                }
 
-	            if(y+1 < overlap) {
-	                Vec3b a1 = A.at<Vec3b>(yoffset + y + 1, x);
-	                Vec3b b1 = B.at<Vec3b>(y + 1, x);
-	                double cap1 = norm(a1, b1);
-	                g.add_edge(idx + 1, idx, (int)(cap0 + cap1), (int)(cap0 + cap1));
-	            }
-
-	            // Add bottom edge
-	            if(x+1 < A.cols) {
-	                Vec3b a2 = A.at<Vec3b>(yoffset + y , x + 1);
-	                Vec3b b2 = B.at<Vec3b>(y, x + 1);
-	                double cap2 = norm(a2, b2);
-	                g.add_edge(idx + overlap, idx , (int)(cap0 + cap2), (int)(cap0 + cap2));
-	            }
-        	}
-    	}
-	}
-
+                // Add right edge
+                if(x+1 < A.cols) {
+                    Vec3b a2 = A.at<Vec3b>(yoffset + y, x+1);
+                    Vec3b b2 = B.at<Vec3b>(y, x+1);
+                    double cap2 = norm(a2, b2);
+                    g.add_edge(idx, idx + overlap, (int)(cap0 + cap2), (int)(cap0 + cap2));
+                }
+            }
+             
+        }
+    }
+    
     int flow = g.maxflow();
-    cout << "max flow: " << flow << endl; 
+    cout << "max flow: " << flow << endl;
 
     graphcut = no_graphcut.clone();
     graphcut_and_cutline = no_graphcut.clone();
@@ -165,6 +166,7 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
                 else {
                     graphcut.at<Vec3b>(y, xoffset + x) = B.at<Vec3b>(y, x);
                 }
+
                 graphcut_and_cutline.at<Vec3b>(y, xoffset + x) =  graphcut.at<Vec3b>(y, xoffset + x);
 
                 // Draw the cut
@@ -184,22 +186,23 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
                         graphcut_and_cutline.at<Vec3b>(y+1, xoffset + x) = Vec3b(0,255,0);
                     }
                 }
+
                 idx++;
             }
-        }
+        }  
     }
-
-    else if (orientation == 2)
+    
+    if (orientation == 2)
     {
         for(int x=0; x < A.cols; x++) {
-            for(int y=0; y < overlap; y++) {
+            for( int y=0; y < overlap; y++)  {
                 if(g.what_segment(idx) == GraphType::SOURCE) {
                     graphcut.at<Vec3b>(yoffset + y, x) = A.at<Vec3b>(yoffset + y, x);
                 }
                 else {
                     graphcut.at<Vec3b>(yoffset + y, x) = B.at<Vec3b>(y, x);
                 }
-                graphcut_and_cutline.at<Vec3b>(yoffset + y, x) =  graphcut.at<Vec3b>(yoffset + y, x);
+                graphcut_and_cutline.at<Vec3b>(y, xoffset + x) =  graphcut.at<Vec3b>(y, xoffset + x);
 
                 // Draw the cut
                 if(y+1 < overlap) {
@@ -214,9 +217,9 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
                 //if(y > 0 && y+1 < A.rows) {
                 if(x > 0 && x+1 < A.cols) {
                     if(g.what_segment(idx) != g.what_segment(idx + overlap)) {
-                        graphcut_and_cutline.at<Vec3b>(x-1, yoffset + y) = Vec3b(0,255,0);
-                        graphcut_and_cutline.at<Vec3b>(x, yoffset + y) = Vec3b(0,255,0);
-                        graphcut_and_cutline.at<Vec3b>(x+1, yoffset + y) = Vec3b(0,255,0);
+                        graphcut_and_cutline.at<Vec3b>(yoffset + y, x-1) = Vec3b(0,255,0);
+                        graphcut_and_cutline.at<Vec3b>(yoffset + y, x) = Vec3b(0,255,0);
+                        graphcut_and_cutline.at<Vec3b>(yoffset + y, x+1) = Vec3b(0,255,0);
                     }
                 }
                 idx++;
@@ -492,15 +495,15 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
     target.image.copyTo(newimg(rect));
     
     cout << "size :  _ " << grid.grid[1].size() - 1<< endl;
-	for (int patchesInY = 0; patchesInY < grid.grid[1].size() - 2; patchesInY++)
+	for (int patchesInY = 0; patchesInY < /*grid.grid[1].size() - 2*/7; patchesInY++)
    {
-        for (int patchesInX = 1; patchesInX < grid.grid.size()-2; patchesInX++) 
+        for (int patchesInX = 1; patchesInX < grid.grid.size(); patchesInX++) 
         {    
         	//Choose texture background or foreground 
             selectedTexture = choseTypeTexture(img, img2, img3, patch, grid, patchesInX, patchesInY);
             
             //Start comparing patches (until error is lower than tolerance)
-            for (int i = 0; i < 500 ; i++) //This alue needs to be at least 50
+            for (int i = 0; i < 1000 ; i++) //This alue needs to be at least 50
             {
             	//Set image to patch
                 patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
@@ -583,7 +586,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 	//synthesised_Image = newimg(Rect(0,posYPatch, widht_Final_image, newimg.rows)); //Make a temporal copy of the synthesised image so far
 	
-	for (int patchesInY = 0; patchesInY < grid.grid[1].size() - 3; patchesInY++)
+	for (int patchesInY = 0; patchesInY < /*grid.grid[1].size() - 3*/7; patchesInY++)
     {
 		//if (patchesInY != 0)
     	//	newTmpY = posYPatch + patch.height + overlap;
@@ -595,7 +598,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	    }
 
     	//Apply GC
-    	gc = graph_Cut(_template, _patch, overlap, 2);
+    	gc = graph_Cut(_template, _patch, _template.rows/2, 2);
     	gc.copyTo(synthesised_Image(Rect(0,newTmpY, gc.cols, gc.rows)));
     	//gc.copyTo(synthesised_Image(Rect(0,newTmpY, gc.cols, gc.rows))); cout << "testing 2" << endl;
 
@@ -604,6 +607,8 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
     	imshow("_template", _template);
     	imshow("_patch", _patch);
     	imshow("synthesised", synthesised_Image);
+    	imwrite("patch.jpg", _patch);
+    	imwrite("template.jpg", _template);
     	
     }
 	
