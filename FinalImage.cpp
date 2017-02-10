@@ -169,7 +169,6 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
                 else {
                     graphcut.at<Vec3b>(y, xoffset + x) = B.at<Vec3b>(y, x);
                 }
-
                 graphcut_and_cutline.at<Vec3b>(y, xoffset + x) =  graphcut.at<Vec3b>(y, xoffset + x);
 
                 // Draw the cut
@@ -180,7 +179,6 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
                         graphcut_and_cutline.at<Vec3b>(y, xoffset + x - 1) = Vec3b(0,255,0);
                     }
                 }
-
                 // Draw the cut
                 if(y > 0 && y+1 < A.rows) {
                     if(g.what_segment(idx) != g.what_segment(idx + overlap)) {
@@ -189,7 +187,6 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
                         graphcut_and_cutline.at<Vec3b>(y+1, xoffset + x) = Vec3b(0,255,0);
                     }
                 }
-
                 idx++;
             }
         }  
@@ -205,7 +202,7 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
                 else {
                     graphcut.at<Vec3b>(yoffset + y, x) = B.at<Vec3b>(y, x);
                 }
-                graphcut_and_cutline.at<Vec3b>(y, xoffset + x) =  graphcut.at<Vec3b>(y, xoffset + x);
+                graphcut_and_cutline.at<Vec3b>(yoffset + y,  x) =  graphcut.at<Vec3b>(yoffset + y, x);
 
                 // Draw the cut
                 if(y+1 < overlap) {
@@ -390,79 +387,16 @@ void FinalImage::addLinearBlending(Mat &target, Mat &patch, int posXPatch, int p
 	dst.copyTo(newimg(rect2));
 }
 
-void FinalImage::GC(Mat &source)
+Mat FinalImage::addBlending(Mat &_patch, Mat &_template, Point center)
 {
-	//Create Gaussian-Mixture-Models
-    //EM model;
-    Mat labels;
-
-    //Open another image
-    Mat image1, image2, patch, newimg;
-    //source = imread("FA.jpg");
-    //image2 = imread("circle.jpg");
-
-     //ouput images
-    cv::Mat meanImg(source.rows, source.cols, CV_32FC3);
-    cv::Mat fgImg(source.rows, source.cols, CV_8UC3);
-    cv::Mat bgImg(source.rows, source.cols, CV_8UC3);
-
-    //convert the input image to float
-    cv::Mat floatSource;
-    source.convertTo(floatSource, CV_32F);
-
-    //now convert the float image to column vector
-    cv::Mat samples(source.rows * source.cols, 3, CV_32FC1);
-    int idx = 0;
-    for (int y = 0; y < source.rows; y++) {
-        cv::Vec3f* row = floatSource.ptr<cv::Vec3f > (y);
-        for (int x = 0; x < source.cols; x++) {
-            samples.at<cv::Vec3f > (idx++, 0) = row[x];
-        }
-    }
-
-    //we need just 2 clusters
-    Ptr<ml::EM> em = ml::EM::create();
-    em->setClustersNumber(2);
-    em->trainEM( samples, noArray(), labels, noArray() );
-
-    //the two dominating colors
-    cv::Mat means = em->getMeans();
-    //the weights of the two dominant colors
-    cv::Mat weights = em->getWeights();
-
-    //we define the foreground as the dominant color with the largest weight
-    const int fgId = weights.at<float>(0) > weights.at<float>(1) ? 0 : 1;
-
-    //now classify each of the source pixels
-    idx = 0;
-    for (int y = 0; y < source.rows; y++) {
-        for (int x = 0; x < source.cols; x++) {
-
-            //classify
-            const int result = cvRound(em->predict2(samples.row(idx++), noArray() )[1]);
-            //get the according mean (dominant color)
-            const double* ps = means.ptr<double>(result, 0);
-
-            //set the according mean value to the mean image
-            float* pd = meanImg.ptr<float>(y, x);
-            //float images need to be in [0..1] range
-            pd[0] = ps[0] / 255.0;
-            pd[1] = ps[1] / 255.0;
-            pd[2] = ps[2] / 255.0;
-
-            //set either foreground or background
-            if (result == fgId) {
-                fgImg.at<cv::Point3_<uchar> >(y, x, 0) = source.at<cv::Point3_<uchar> >(y, x, 0);
-            } else {
-                bgImg.at<cv::Point3_<uchar> >(y, x, 0) = source.at<cv::Point3_<uchar> >(y, x, 0);
-            }
-        }
-    }
-
-    cv::imshow("original Image", source);
-    cv::imshow("Means", meanImg);
-    cv::imshow("Foreground", fgImg);
-    cv::imshow("Background", bgImg);
+	Mat src = _patch;
+	Mat dst = _template(Rect(0, 0, _template.cols, _template.rows));
+	// Create an all white mask
+	Mat src_mask = 255 * Mat::ones(src.rows, src.cols, src.depth());
+	Mat normal_clone;
+	seamlessClone(src, dst, src_mask, center, normal_clone, NORMAL_CLONE); 
+	circle( normal_clone, center, 5.0, Scalar( 0, 50, 255 ), 1, 8 );
+	return normal_clone;
 }
 
 Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2, Mat &img3, int backgroundPorcentage, int detailsPorcentage)
@@ -470,12 +404,14 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	Patch newTarget(img); //Temporal target for new rows
 	Patch bestP(img);
 
+	Point center;
+
 	//Mats for cloning
 	Mat src;
 	Mat dst;
 	Mat normal_clone;
 
-	Mat selectedTexture, _newImg;
+	Mat selectedTexture, _newImg, _finalImage;
 
 	overlap = patch.width / 6; 
 	offset = patch.width - overlap; 
@@ -538,7 +474,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	        _newImg = newimg(Rect(0, posYPatch, posXPatch + overlap, bestP.image.rows)); //temporal target
 	        _newImg = graph_Cut( _newImg, bestP.image, overlap, 1);
 	        _newImg.copyTo(newimg(Rect(0, posYPatch, _newImg.cols, _newImg.rows)));
-	      
+
    			//Set new target, which is the best patch of this iteration	      
 	        target.image = bestP.image;
             posXPatch += patch.width - overlap;
@@ -575,10 +511,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 	posYPatch = 0;
 	posXPatch = patch.width - overlap;
-	
 	int widht_Final_image = newimg.cols - overlap * 2;
-
-	//Apply GC for Y
 	Mat _patch, _template, gc, synthesised_Image;
 	int newTmpY = 0; //new position in y to do the GC
 
@@ -587,35 +520,40 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	
 	_template = newimg(Rect(0,posYPatch, widht_Final_image, patch.height));
     _patch = newimg(Rect(0,posYPatch + patch.height, widht_Final_image, patch.height)); 
-
-	//synthesised_Image = newimg(Rect(0,posYPatch, widht_Final_image, newimg.rows)); //Make a temporal copy of the synthesised image so far
 	
-	for (int patchesInY = 0; patchesInY < grid.grid[1].size()-1 ; patchesInY++)
+	for (int patchesInY = 0; patchesInY <grid.grid[1].size()-1 ; patchesInY++)
     {
-		//if (patchesInY != 0)
-    	//	newTmpY = posYPatch + patch.height + overlap;
-
     	if (patchesInY != 0)
     	{
 	    	_template = synthesised_Image(Rect(0,posYPatch - (overlap * patchesInY), widht_Final_image, patch.height));
-	    	_patch = newimg(Rect(0,posYPatch + patch.height, widht_Final_image, patch.height)); cout << "testing 1" << endl;
+	    	_patch = newimg(Rect(0,posYPatch + patch.height, widht_Final_image, patch.height)); 
 	    }
 
     	//Apply GC
     	gc = graph_Cut(_template, _patch, overlap, 2);
+    	imshow("gc", gc);
     	gc.copyTo(synthesised_Image(Rect(0,newTmpY, gc.cols, gc.rows)));
-    	//gc.copyTo(synthesised_Image(Rect(0,newTmpY, gc.cols, gc.rows))); cout << "testing 2" << endl;
+
+    	//Apply blending
+    	// The location of the center of the src in the dst
+		Point center(_patch.cols/2 , _patch.rows + overlap);
+    	normal_clone = addBlending(_patch, gc, center);
+    	normal_clone.copyTo(gc(Rect(0, 0, normal_clone.cols, normal_clone.rows)));
+
+    	//Add the cut + blending to final image
+    	gc.copyTo(synthesised_Image(Rect(0,newTmpY, gc.cols, gc.rows)));
+    	_finalImage = synthesised_Image(Rect(0,0, synthesised_Image.cols, (grid.grid[1].size() * patch.height) - (overlap * grid.grid[1].size()-2) ));
+    	//_finalImage = synthesised_Image(Rect(0,0, synthesised_Image.cols, ));
 
     	posYPatch += patch.height;
     	newTmpY += patch.height - overlap;
-    	imshow("_template", _template);
-    	imshow("_patch", _patch);
-    	imshow("synthesised", synthesised_Image);
+    	//imshow("_template", _template);
+    	//imshow("_patch", _patch);
     	imwrite("patch.jpg", _patch);
     	imwrite("template.jpg", _template);
     	
     }
 	
-    imwrite("final.png", synthesised_Image);
-	return synthesised_Image;
+	imwrite("final.jpg", _finalImage);
+	return _finalImage;
 }
