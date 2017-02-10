@@ -26,8 +26,9 @@ FinalImage::FinalImage(Mat &img, int y_expand, int x_expand, int windowSize)
 
 Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
 {
-	//A = target, B = patch
-    //Validate all images
+
+
+
     assert(A.data);
     assert(B.data);
     if (orientation == 1)
@@ -60,7 +61,9 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
     A.copyTo(no_graphcut(Rect(0, 0, A.cols, A.rows)));
     B.copyTo(no_graphcut(Rect(xoffset, yoffset, B.cols, B.rows)));
     imshow("no graphcut ", no_graphcut);
+    
 
+    
     int est_nodes;
     if (orientation == 1)      
         est_nodes = A.rows * overlap;
@@ -172,7 +175,7 @@ Mat FinalImage::graph_Cut(Mat& A, Mat& B, int overlap, int orientation)
                 // Draw the cut
                 if(x+1 < overlap) {
                     if(g.what_segment(idx) != g.what_segment(idx+1)) {
-                        graphcut_and_cutline.at<Vec3b>(y, xoffset + x) = Vec3b(0,0255,0);
+                        graphcut_and_cutline.at<Vec3b>(y, xoffset + x) = Vec3b(0,255,0);
                         graphcut_and_cutline.at<Vec3b>(y, xoffset + x + 1) = Vec3b(0,255,0);
                         graphcut_and_cutline.at<Vec3b>(y, xoffset + x - 1) = Vec3b(0,255,0);
                     }
@@ -482,7 +485,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 	//Size of grid
 	gridX = (width / patch.width) + 1; //plus one because with the overlaping of patches, there is space for one more
-	gridY = (height / patch.height) + 1;
+	gridY = (height / patch.height) ;
 
 	//Create grid with random distribution for either background or texture
 	Grid grid(gridX, gridY); 
@@ -494,8 +497,8 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
     Rect rect(0,0, target.width, target.height);
     target.image.copyTo(newimg(rect));
     
-    cout << "size :  _ " << grid.grid[1].size() - 1<< endl;
-	for (int patchesInY = 0; patchesInY < /*grid.grid[1].size() - 2*/7; patchesInY++)
+    cout << "size: " << grid.grid[1].size() << endl;
+	for (int patchesInY = 0; patchesInY < grid.grid[1].size(); patchesInY++)
    {
         for (int patchesInX = 1; patchesInX < grid.grid.size(); patchesInX++) 
         {    
@@ -503,7 +506,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
             selectedTexture = choseTypeTexture(img, img2, img3, patch, grid, patchesInX, patchesInY);
             
             //Start comparing patches (until error is lower than tolerance)
-            for (int i = 0; i < 1000 ; i++) //This alue needs to be at least 50
+            for (int i = 0; i < 500 ; i++) //This alue needs to be at least 50
             {
             	//Set image to patch
                 patch.image = selectSubset(selectedTexture, patch.width, patch.height); //subselection from original texture
@@ -544,29 +547,30 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 		
 		posXPatch = patch.width - overlap; //Update posision of X
 		posYPatch += patch.height;//New patch of the next row (which is the new first target)
-        newTarget.roiOfBotTarget = newimg(Rect(0, posYPatch , patch.width, overlap));
+        newTarget.roiOfBotTarget = newimg(Rect(0, posYPatch - overlap , patch.width, overlap));
 
-        if (patchesInY < newimg.rows/patch.height) //new target on next row
-       {
-            for (int i = 0; i < 100; i++)
-            {
-            	//selectedTexture = choseTypeTexture(img, img2, patch, grid, 0, patchesInY+1);
-                newTarget.image = selectSubset(img, newTarget.width, newTarget.height); //subselection from original texture            
-                //Create ROIs
-                newTarget.roiOfTopPatch = newTarget.image(Rect(0, 0, newTarget.width, overlap));   
-                //Calculate errors
-                err = msqe(newTarget.roiOfTopPatch, newTarget.roiOfBotTarget);
-                newTarget.error = err;
-                _patchesList.push_back(newTarget);
-            }
-
-            //chose best error
-            bestP = getRandomPatch(_patchesList);
-            newTarget.image = bestP.image;
-            target = newTarget;
-            target.image.copyTo(newimg(Rect(0, posYPatch, target.image.cols, target.image.rows)));
-            _patchesList.clear();     
-        }  
+        if (patchesInY + 1 != grid.grid[1].size())
+        {
+        	for (int i = 0; i < 100; i++)
+	        {
+	        	//selectedTexture = choseTypeTexture(img, img2, patch, grid, 0, patchesInY+1);
+	            newTarget.image = selectSubset(img, newTarget.width, newTarget.height); //subselection from original texture            
+	            //Create ROIs
+	            newTarget.roiOfTopPatch = newTarget.image(Rect(0, 0, newTarget.width, overlap));   
+	            //Calculate errors
+	            err = msqe(newTarget.roiOfTopPatch, newTarget.roiOfBotTarget);
+	            newTarget.error = err;
+	            _patchesList.push_back(newTarget);
+	        }
+	        cout << "y: " << patchesInY << endl;
+	        //chose best error
+	        bestP = getRandomPatch(_patchesList);
+	        newTarget.image = bestP.image;
+	        target = newTarget;
+	        target.image.copyTo(newimg(Rect(0, posYPatch, target.image.cols, target.image.rows)));
+	        _patchesList.clear();     
+        }
+        
 	}
 
 	posYPatch = 0;
@@ -586,7 +590,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 
 	//synthesised_Image = newimg(Rect(0,posYPatch, widht_Final_image, newimg.rows)); //Make a temporal copy of the synthesised image so far
 	
-	for (int patchesInY = 0; patchesInY < /*grid.grid[1].size() - 3*/7; patchesInY++)
+	for (int patchesInY = 0; patchesInY < grid.grid[1].size()-1 ; patchesInY++)
     {
 		//if (patchesInY != 0)
     	//	newTmpY = posYPatch + patch.height + overlap;
@@ -598,7 +602,7 @@ Mat FinalImage::textureSynthesis(Patch patch, Patch target, Mat &img, Mat &img2,
 	    }
 
     	//Apply GC
-    	gc = graph_Cut(_template, _patch, _template.rows/2, 2);
+    	gc = graph_Cut(_template, _patch, overlap, 2);
     	gc.copyTo(synthesised_Image(Rect(0,newTmpY, gc.cols, gc.rows)));
     	//gc.copyTo(synthesised_Image(Rect(0,newTmpY, gc.cols, gc.rows))); cout << "testing 2" << endl;
 

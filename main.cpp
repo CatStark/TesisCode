@@ -22,13 +22,11 @@ int main( int argc, char** argv ){
     
     //Load input images
     //img = imread("Moon.jpg");
-    InputImg = imread("AST3.jpg");
-    InputImg2 = imread("AST3.jpg");
+    InputImg = imread("AST1.jpg");
+    InputImg2 = imread("AST2.jpg");
     InputImg3 = imread("AST3.jpg");
 
     int backgroundPorcentage, detailsPorcentage = 0;
-
-   // imshow("original ", InputImg);
 
     //Create first patch from img
     Patch _patch(InputImg); 
@@ -36,9 +34,8 @@ int main( int argc, char** argv ){
     //Create target
     Patch _target(InputImg);
 
-
     //Create empty output texure
-    FinalImage _finalImage(InputImg, InputImg.rows, InputImg.cols, 10);
+    FinalImage _finalImage(InputImg, 256, 256, 10);
    
 
     cout << "1. Random    2. Image Quilting " << endl;
