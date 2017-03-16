@@ -31,16 +31,20 @@ void Grid::fill(int backgroundPercentage)
 void Grid::mapGeneration(int backgroundPercentage)
 {
 	//we run through each cell again and if it's less than the cell average the cell is type A or type B
+	//0 is background 1 is details
 	int flag = sortedList.size()/(backgroundPercentage/10);
 	flag = sortedList[flag];
 	for (int j = 0; j < grid[1].size() ; j++){
 		for (int i = 0; i < grid.size(); i++){
 			if (grid[i][j] > flag)
 				grid[i][j] = 0;
-			else
+			else if (grid[i][j] <= flag && grid[i][j] >= flag/2 )
 				grid[i][j] = 1;
+			else
+				grid[i][j] = 2;
 			cout << "[" << grid[i][j] << "]";
 		}
 		cout << endl;
 	}
+
 }

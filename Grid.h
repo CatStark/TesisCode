@@ -3,7 +3,7 @@
 #ifndef Grid_H
 #define Grid_H
 
-#include "poisson.h"
+#include "Patch.h"
 
 class Grid
 {

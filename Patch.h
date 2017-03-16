@@ -4,15 +4,23 @@
 #define patch_H
 
 #include "opencv2/core.hpp"
+#include "opencv2/opencv.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/photo.hpp"
 #include "opencv2/imgcodecs.hpp"
+#include "maxflow/graph.h"
+#include <utility>
+
+
+#include <cassert>
+#include <vector>
 #include <iostream>
 
 
 using namespace cv;
 using namespace std;
+
 
 typedef struct _patches
 	{
@@ -30,6 +38,7 @@ public:
 	Mat roiOfPatch, roiOfTarget, roiOfTopPatch, roiOfBotTarget, halfOfTarget;
 	double error; 
 	int typeOfTexture; //Type of texture; 1) background or 2) detail
+	int lightDirection;
 	
 private:
 };
